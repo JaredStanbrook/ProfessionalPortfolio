@@ -14,27 +14,31 @@
         <link rel="stylesheet" href="./style.css" />
         <script src="script.js"></script>
     </head>
-
-    <body class="antialiased">
-        <div class="container">
-            <div class="blob"></div>
-            <div class="left-column">
-                <h1 class="jacquard-12-regular text-5xl tracking-tight">Jared Stanbrook</h1>
-                <h2 class="mt-1 text-xl tracking-tight">IT Student</h2>
-                <p class="mt-3 tracking-tight">Perth, Western Australia</p>
-                <p class="mt-3 leading-normal">Email: antzpr9ln@mozmail.com</p>
-            </div>
-            <div class="right-column">
-                <section id="about">
-                    <div class="sticky">
-                        <h2 class="text-sm tracking-widest uppercase">About</h2>
+    <body>
+        <div class="blob"></div>
+        <div class="container md:py-20 md:px-12 lg:px-24 lg:py-0">
+            <div class="lg:flex lg:justify-between">
+                <div
+                    class="left-column lg:sticky lg:top-0 lg:flex lg:max-h-screen lg:w-1/2 lg:flex-col lg:justify-between lg:py-24">
+                    <div class="title">
+                        <h1 class="jacquard-12-regular sm:text-5xl"><a href="/">Jared Stanbrook</a></h1>
+                        <h2 class="sm:text-xl">IT Student</h2>
+                        <p>Perth, Western Australia</p>
+                        <p>Email: antzpr9ln@mozmail.com</p>
                     </div>
-                    <div>
-                        <p class="mb-4">Lorem Ipsum</p>
-                        <p class="mb-4">Lorem Ipsum</p>
-                        <p class="mb-4">Lorem Ipsum</p>
-                    </div>
-                </section>
+                </div>
+                <div id="content" class="right-column lg:w-1/2 lg:py-24">
+                    <section id="about" class="md:mb-24 lg:mb-36 lg:scroll-mt-24">
+                        <div class="content-heading md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
+                            <h2 class="lg:sr-only">About</h2>
+                        </div>
+                        <div class="content-text">
+                            <p>Lorem Ipsum</p>
+                            <p>Lorem Ipsum</p>
+                            <p>Lorem Ipsum</p>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </body>
