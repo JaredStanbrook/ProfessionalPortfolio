@@ -105,7 +105,7 @@ body {
 .right-column {
     padding-top: 6rem;
 }
-.title h1{
+.title h1 {
     --tw-text-opacity: 1;
     color: rgb(226 232 240 / var(--tw-text-opacity));
     letter-spacing: -0.025em;
@@ -547,4 +547,7 @@ pre {
     --x: -55%;
     --y: -45%;
     --t: 62;
+}
+.scroll-smooth {
+    scroll-behavior: smooth;
 }
