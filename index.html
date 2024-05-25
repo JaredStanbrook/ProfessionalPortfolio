@@ -33,8 +33,18 @@
                         <p>Email: antzpr9ln@mozmail.com</p>
                         <nav class="title-nav lg:block" aria-label="In-page jump links">
                             <ul>
-                                <li><a href="#about">About</a></li>
-                                <li><a href="#stuff">Stuff</a></li>
+                                <li>
+                                    <a class="group active" href="#about"
+                                        ><span class="nav-indicator"></span
+                                        ><span class="nav-text">About</span></a
+                                    >
+                                </li>
+                                <li>
+                                    <a class="group" href="#experience"
+                                        ><span class="nav-indicator"></span
+                                        ><span class="nav-text">Experience</span></a
+                                    >
+                                </li>
                             </ul>
                         </nav>
                     </div>
@@ -62,7 +72,10 @@
                     </ul>
                 </div>
                 <div id="content" class="right-column lg:w-1/2 lg:py-24">
-                    <section id="about" class="md:mb-24 lg:mb-36 lg:scroll-mt-24" aria-label="About me">
+                    <section
+                        id="about"
+                        class="content-section md:mb-24 lg:mb-36 lg:scroll-mt-24"
+                        aria-label="About me">
                         <div
                             class="content-heading md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
                             <h2 class="lg:sr-only">About</h2>
@@ -73,17 +86,54 @@
                             <p>Lorem Ipsum</p>
                         </div>
                     </section>
-                    <section id="experience" class="md:mb-24 lg:mb-36 lg:scroll-mt-24" aria-label="Work experience">
-                      <div
-                          class="content-heading md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
-                          <h2 class="lg:sr-only">Experience</h2>
-                      </div>
-                      <div class="content-text">
-                          <p>Lorem Ipsum</p>
-                          <p>Lorem Ipsum</p>
-                          <p>Lorem Ipsum</p>
-                      </div>
-                  </section>
+                    <section
+                        id="experience"
+                        class="content-section md:mb-24 lg:mb-36 lg:scroll-mt-24"
+                        aria-label="Work experience">
+                        <div
+                            class="content-heading md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
+                            <h2 class="lg:sr-only">Experience</h2>
+                        </div>
+                        <div>
+                            <ol class="list">
+                                <li>
+                                    <div class="box-field sm:grid-cols-8 sm:gap-8 md:gap-4">
+                                        <div class="box-field-inner lg:-inset-x-6 lg:block"></div>
+                                        <header class="sm:col-span-2">2024 - Present</header>
+                                    </div>
+                                </li>
+                            </ol>
+                            <div class="content-footer">
+                                <a
+                                    href="/"
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    aria-label="View Full Résumé (opens in a new tab)"
+                                    ><span
+                                        >View
+                                        <span style="display: inline-block">Resume</span></span
+                                    ></a
+                                >
+                            </div>
+                        </div>
+                    </section>
+                    <section
+                        id="projects"
+                        class="content-section md:mb-24 lg:mb-36 lg:scroll-mt-24"
+                        aria-label="Selected projects">
+                        <div
+                            class="content-heading md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
+                            <h2 class="lg:sr-only">Experience</h2>
+                        </div>
+                        <div class="content-text">
+                            <p>Lorem Ipsum</p>
+                            <p>Lorem Ipsum</p>
+                            <p>Lorem Ipsum</p>
+                        </div>
+                    </section>
+                    <footer class="sm:pb-0">
+                        <p>Loosely designed in my head and coded in Visual Studio Code by Jizzy.</p>
+                    </footer>
                 </div>
             </div>
         </div>
