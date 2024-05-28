@@ -310,6 +310,7 @@ video {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 0.15s;
     padding-bottom: 0.25rem;
+    gap: 1rem;
     display: grid;
     position: relative;
 }
