@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", (event) => {
-    var cursor = document.querySelector(".blob");
     var btns = document.getElementsByClassName("group");
     for (var i = 0; i < btns.length; i++) {
         btns[i].addEventListener("click", function () {
@@ -8,7 +7,10 @@ document.addEventListener("DOMContentLoaded", (event) => {
             this.className += " active";
         });
     }
+    var cursor = document.querySelector(".blob");
+    cursor.style.display = "flex";
     document.addEventListener("mousemove", function (e) {
+        /*
         var w = window.innerWidth;
         //change! very bad performace!
         if (!(w <= 1000)) {
@@ -16,6 +18,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
         } else {
             cursor.style.display = "none";
         }
+        */
         cursor.style.transform = `translate3d(calc(${e.clientX}px - 50%), calc(${e.clientY}px - 50%), 0)`;
     });
 });
