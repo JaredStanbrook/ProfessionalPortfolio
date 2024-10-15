@@ -1,4 +1,4 @@
-name = "it-service-desk"
+name = "professionalportfolio"
 compatibility_date = "2024-08-30"
 main = "server/index.ts"
 assets = { directory = "frontend/dist" }
@@ -14,12 +14,12 @@ assets = { directory = "frontend/dist" }
 # binding = "MY_BUCKET"
 # bucket_name = "my-bucket"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "it-service-desk-db"
-database_id = "d676dc2d-0eb7-4f5a-8d73-a1940b8c6241"
-migrations_dir = "drizzle/migrations"
-
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "it-service-desk-db"
+# database_id = "d676dc2d-0eb7-4f5a-8d73-a1940b8c6241"
+# migrations_dir = "drizzle/migrations"
+ 
 [dev]
 port = 3000
 local_protocol = "http"

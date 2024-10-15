@@ -6,7 +6,7 @@ import { employeeRoute } from "./routes/employee";
 const app = new Hono();
 app.use("*", logger());
 
-const apiRoutes = app.basePath("/api").route("/employee", employeeRoute); //.route("/", authRoute)
+const apiRoutes = app.basePath("/api")//.route("/employee", employeeRoute); //.route("/", authRoute)
 
 export default app;
 export type ApiRoutes = typeof apiRoutes;
