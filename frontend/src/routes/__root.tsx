@@ -19,7 +19,7 @@ function NavBar() {
                 <h1 className="text-2xl font-bold">Employee Tracker</h1>
             </Link>
             <div className="flex gap-2">
-                <Link to="/about" className="[&.active]:font-bold">
+                <Link to="/unimark" className="[&.active]:font-bold">
                     About
                 </Link>
                 <Link to="/employee" className="[&.active]:font-bold">

@@ -1,5 +1,5 @@
 import path from "path"
-import { defineConfig } from "vite";
+import { defineConfig} from "vite";
 import react from "@vitejs/plugin-react";
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
@@ -18,5 +18,8 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
-  }
+  },
+  build: {
+    target: "esnext",
+  },
 });

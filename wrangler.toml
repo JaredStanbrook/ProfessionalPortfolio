@@ -1,24 +1,31 @@
 name = "professionalportfolio"
 compatibility_date = "2024-08-30"
 main = "server/index.ts"
-assets = { directory = "frontend/dist" }
+assets = { directory = "./frontend/dist", binding = "ASSETS", html_handling = "auto-trailing-slash", not_found_handling = "single-page-application" }
+
+routes = [
+  { pattern = "jaredstanbrook.com", custom_domain = true }
+]
+
+[observability]
+enabled = true
 
 # [vars]
 # MY_VAR = "my-variable"
 
-# [[kv_namespaces]]
-# binding = "MY_KV_NAMESPACE"
-# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+[[kv_namespaces]]
+binding = "professional-portfolio-kv"
+id = "1969840b46944620a2ac06777f903fec"
 
-# [[r2_buckets]]
-# binding = "MY_BUCKET"
-# bucket_name = "my-bucket"
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "professional-portfolio-r2"
 
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "it-service-desk-db"
-# database_id = "d676dc2d-0eb7-4f5a-8d73-a1940b8c6241"
-# migrations_dir = "drizzle/migrations"
+[[d1_databases]]
+binding = "DB"
+database_name = "professional-portfolio-db"
+database_id = "ecb3b2b7-8d46-455b-b645-29c109e8b8a5"
+migrations_dir = "drizzle/migrations"
  
 [dev]
 port = 3000
