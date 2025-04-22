@@ -1,47 +1,55 @@
 import { Hono } from "hono";
 import { dbMiddleware } from "../db";
+import { githubCache } from "../db/schema/githubCache";
+import { and, eq, gt } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 
-const owner = "JaredStanbook";
-const repo = "it-service-desk";
-
-export const githubRoute = new Hono<{ Bindings: CloudflareBindings }>()
+export const githubRoute = new Hono<{ Bindings: Env }>()
   .use("*", dbMiddleware)
-  .get("/stats/commit_activity", async (c) => {
-    try {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/stats/commit_activity`,
-        {
-          headers: {
-            Authorization: `Bearer ${c.env.GITHUB_API_TOKEN}`,
-            Accept: "application/vnd.github.v3+json",
-            "User-Agent": owner,
-          },
-        }
-      );
-      const data = await response.json();
-      return c.json({ data });
-    } catch (error) {
-      console.error("Error fetching weekly commit data:", error);
-      return c.json({ error: "Failed to fetch data" }, 500);
+  .get("/:owner/:repo", async (c) => {
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
+
+    const cached = await c.var.db
+      .select()
+      .from(githubCache)
+      .where(
+        and(
+          eq(githubCache.owner, owner),
+          eq(githubCache.repo, repo),
+          gt(githubCache.expiresAt, Math.floor(Date.now() / 1000))
+        )
+      )
+      .limit(1)
+      .then((res) => res[0]);
+
+    if (cached) {
+      return c.json({ cached });
     }
-  })
-  .get("/stats/code_frequency", async (c) => {
     try {
-      const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/stats/code_frequency`,
-        {
-          headers: {
-            Authorization: `Bearer ${c.env.GITHUB_API_TOKEN}`,
-            Accept: "application/vnd.github.v3+json",
-            "User-Agent": owner,
-          },
-        }
-      );
-      console.log(response);
+      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+        headers: {
+          Authorization: `Bearer ${c.env.GITHUB_API_TOKEN}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": owner,
+        },
+      });
+
       const data = await response.json();
+
+      const now = Math.floor(Date.now() / 1000);
+      const expiry = now + 60 * 60; // cache for 1 hour
+
+      await c.var.db.insert(githubCache).values({
+        owner: owner,
+        repo: repo,
+        data: JSON.stringify(data),
+        expiresAt: expiry,
+      });
+
       return c.json({ data });
     } catch (error) {
-      console.error("Error fetching frequency data:", error);
-      return c.json({ error: "Failed to fetch data" }, 500);
+      console.error("Error fetching commit data:", error);
+      throw new HTTPException(500, { message: "Failed to fetch data" });
     }
   });

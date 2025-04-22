@@ -2,6 +2,7 @@ import { insertUserSchema } from "./db/schema/user";
 import { insertSessionSchema } from "./db/schema/session";
 
 import { z } from "zod";
+import type { selectGithubCacheSchema } from "./db/schema/githubCache";
 
 export const createUserSchema = insertUserSchema
   .omit({
@@ -27,3 +28,4 @@ export const createSessionSchema = insertSessionSchema.omit({
 export type CreateUser = z.infer<typeof createUserSchema>;
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type CreateSession = z.infer<typeof createSessionSchema>;
+export type GithubCache = z.infer<typeof selectGithubCacheSchema>;
