@@ -1,15 +1,48 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { cors } from "hono/cors";
 
-import { employeeRoute } from "./routes/employee";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
-//import { authRoute } from "./routes/auth"
+import { githubRoute } from "./routes/github";
+import { homeRoute } from "./routes/home";
+import { authRoute } from "./routes/auth";
 
-const app = new Hono<{ Bindings: CloudflareBindings }>();
-app.use("*", logger());
-app.get("/*", async (c) => {
-    return c.env.ASSETS.fetch(c.req.raw);
+import { HTTPException } from "hono/http-exception";
+
+const app = new Hono<{ Bindings: Env }>()
+  .use("*", logger())
+  .use(
+    cors({
+      origin: "*",
+      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowHeaders: ["Authorization", "Content-Type"],
+      credentials: true,
+    })
+  )
+  .basePath("/api")
+  .route("/auth", authRoute)
+  .route("/github", githubRoute)
+  .route("/home", homeRoute)
+  .get("/*", async (c) => {
+    const object = await c.env.R2.get(c.req.path.slice(1));
+    if (object != null) {
+      c.status(201);
+      return c.body(object?.body);
+    } else {
+      return c.env.ASSETS.fetch(c.req.raw);
+    }
+  });
+
+app.onError((err) => {
+  if (err instanceof HTTPException) {
+    return err.getResponse();
+  } else {
+    return new Response("Internal Server Error", { status: 500 });
+  }
 });
-//const apiRoutes = app.basePath("/api"); //.route("/employee", employeeRoute); //.route("/", authRoute)
+
+app.notFound((c) => {
+  return c.env.ASSETS.fetch(c.req.raw);
+});
+
+export type AppType = typeof app;
 export default app;
-//export type ApiRoutes = typeof apiRoutes;

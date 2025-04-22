@@ -1,46 +1,29 @@
-import { createRootRouteWithContext, Link, Outlet, Navigate } from "@tanstack/react-router";
-//import { Toaster } from "@/components/ui/sonner"
+import { Link, Outlet, createRootRouteWithContext, redirect } from "@tanstack/react-router";
+import { Toaster } from "@/components/ui/sonner";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { NavBar } from "@/components/navbar";
 import { type QueryClient } from "@tanstack/react-query";
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { getUserQueryOptions } from "@/api/authApi";
 
 interface MyRouterContext {
-    queryClient: QueryClient;
+  queryClient: QueryClient;
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-    component: Root,
-    //component: () => <Navigate to="/about"/>
+  component: Root,
 });
 
-function NavBar() {
-    return (
-        <div className="p-2 flex justify-between max-w-2xl m-auto items-baseline">
-            <Link to="/">
-                <h1 className="text-2xl font-bold">Employee Tracker</h1>
-            </Link>
-            <div className="flex gap-2">
-                <Link to="/unimark" className="[&.active]:font-bold">
-                    About
-                </Link>
-                <Link to="/employee" className="[&.active]:font-bold">
-                    Employee
-                </Link>
-                <Link to="/create-employee" className="[&.active]:font-bold">
-                    Create
-                </Link>
-                <Link to="/profile" className="[&.active]:font-bold">
-                    Profile
-                </Link>
-            </div>
-        </div>
-    );
-}
-//<NavBar />
-//<Navigate to="/about"/>
 function Root() {
-    return (
-        <>
-            <Outlet />
-        </>
-    );
+  return (
+    <>
+      <NavBar />
+      <div className="p-2 max-w-2xl m-auto">
+        <Outlet />
+      </div>
+      <Toaster />
+      <ReactQueryDevtools position="left" />
+      <TanStackRouterDevtools position="bottom-left" />
+    </>
+  );
 }

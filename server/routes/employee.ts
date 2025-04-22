@@ -2,14 +2,10 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 
 import { dbMiddleware } from "../db";
-import type { CustomContext } from "../db";
-
 import { employee as employeeTable, insertEmployeeSchema } from "../db/schema/employee";
-import { eq, desc, sum, and } from "drizzle-orm";
-
 import { createEmployeeSchema } from "../sharedTypes";
 
-export const employeeRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
+export const employeeRoute = new Hono<{ Bindings: CloudflareBindings }>()
     .use("*", dbMiddleware)
     .get("/", async (c) => {
         const employee = await c.var.db.select().from(employeeTable);
@@ -21,7 +17,7 @@ export const employeeRoute = new Hono<{ Bindings: Env; Variables: CustomContext 
         const employee = await c.req.valid("json");
         const validatedEmployee = insertEmployeeSchema.parse({
             ...employee,
-          });
+        });
         const result = await c.var.db
             .insert(employeeTable)
             .values(validatedEmployee)

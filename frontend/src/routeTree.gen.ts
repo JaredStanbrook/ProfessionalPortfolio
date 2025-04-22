@@ -11,28 +11,41 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as UnimarkImport } from './routes/unimark'
+import { Route as IthelpdeskImport } from './routes/ithelpdesk'
+import { Route as HomeImport } from './routes/home'
 import { Route as AuthenticatedImport } from './routes/_authenticated'
-import { Route as AuthenticatedIndexImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedUnimarkImport } from './routes/_authenticated/unimark'
+import { Route as IndexImport } from './routes/index'
 import { Route as AuthenticatedProfileImport } from './routes/_authenticated/profile'
-import { Route as AuthenticatedEmployeeImport } from './routes/_authenticated/employee'
-import { Route as AuthenticatedCreateEmployeeImport } from './routes/_authenticated/create-employee'
+import { Route as AuthSignupImport } from './routes/_auth/signup'
+import { Route as AuthLoginImport } from './routes/_auth/login'
+import { Route as AuthForgotPasswordImport } from './routes/_auth/forgot-password'
 
 // Create/Update Routes
+
+const UnimarkRoute = UnimarkImport.update({
+  path: '/unimark',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const IthelpdeskRoute = IthelpdeskImport.update({
+  path: '/ithelpdesk',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const HomeRoute = HomeImport.update({
+  path: '/home',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const AuthenticatedRoute = AuthenticatedImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRoute,
 } as any)
 
-const AuthenticatedIndexRoute = AuthenticatedIndexImport.update({
+const IndexRoute = IndexImport.update({
   path: '/',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-
-const AuthenticatedUnimarkRoute = AuthenticatedUnimarkImport.update({
-  path: '/unimark',
-  getParentRoute: () => AuthenticatedRoute,
+  getParentRoute: () => rootRoute,
 } as any)
 
 const AuthenticatedProfileRoute = AuthenticatedProfileImport.update({
@@ -40,21 +53,32 @@ const AuthenticatedProfileRoute = AuthenticatedProfileImport.update({
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 
-const AuthenticatedEmployeeRoute = AuthenticatedEmployeeImport.update({
-  path: '/employee',
-  getParentRoute: () => AuthenticatedRoute,
+const AuthSignupRoute = AuthSignupImport.update({
+  path: '/signup',
+  getParentRoute: () => rootRoute,
 } as any)
 
-const AuthenticatedCreateEmployeeRoute =
-  AuthenticatedCreateEmployeeImport.update({
-    path: '/create-employee',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
+const AuthLoginRoute = AuthLoginImport.update({
+  path: '/login',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AuthForgotPasswordRoute = AuthForgotPasswordImport.update({
+  path: '/forgot-password',
+  getParentRoute: () => rootRoute,
+} as any)
 
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -62,19 +86,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImport
       parentRoute: typeof rootRoute
     }
-    '/_authenticated/create-employee': {
-      id: '/_authenticated/create-employee'
-      path: '/create-employee'
-      fullPath: '/create-employee'
-      preLoaderRoute: typeof AuthenticatedCreateEmployeeImport
-      parentRoute: typeof AuthenticatedImport
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeImport
+      parentRoute: typeof rootRoute
     }
-    '/_authenticated/employee': {
-      id: '/_authenticated/employee'
-      path: '/employee'
-      fullPath: '/employee'
-      preLoaderRoute: typeof AuthenticatedEmployeeImport
-      parentRoute: typeof AuthenticatedImport
+    '/ithelpdesk': {
+      id: '/ithelpdesk'
+      path: '/ithelpdesk'
+      fullPath: '/ithelpdesk'
+      preLoaderRoute: typeof IthelpdeskImport
+      parentRoute: typeof rootRoute
+    }
+    '/unimark': {
+      id: '/unimark'
+      path: '/unimark'
+      fullPath: '/unimark'
+      preLoaderRoute: typeof UnimarkImport
+      parentRoute: typeof rootRoute
+    }
+    '/_auth/forgot-password': {
+      id: '/_auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordImport
+      parentRoute: typeof rootRoute
+    }
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginImport
+      parentRoute: typeof rootRoute
+    }
+    '/_auth/signup': {
+      id: '/_auth/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof AuthSignupImport
+      parentRoute: typeof rootRoute
     }
     '/_authenticated/profile': {
       id: '/_authenticated/profile'
@@ -83,39 +135,17 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileImport
       parentRoute: typeof AuthenticatedImport
     }
-    '/_authenticated/unimark': {
-      id: '/_authenticated/unimark'
-      path: '/unimark'
-      fullPath: '/unimark'
-      preLoaderRoute: typeof AuthenticatedUnimarkImport
-      parentRoute: typeof AuthenticatedImport
-    }
-    '/_authenticated/': {
-      id: '/_authenticated/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexImport
-      parentRoute: typeof AuthenticatedImport
-    }
   }
 }
 
 // Create and export the route tree
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedCreateEmployeeRoute: typeof AuthenticatedCreateEmployeeRoute
-  AuthenticatedEmployeeRoute: typeof AuthenticatedEmployeeRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
-  AuthenticatedUnimarkRoute: typeof AuthenticatedUnimarkRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedCreateEmployeeRoute: AuthenticatedCreateEmployeeRoute,
-  AuthenticatedEmployeeRoute: AuthenticatedEmployeeRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
-  AuthenticatedUnimarkRoute: AuthenticatedUnimarkRoute,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -123,60 +153,99 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 )
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '': typeof AuthenticatedRouteWithChildren
-  '/create-employee': typeof AuthenticatedCreateEmployeeRoute
-  '/employee': typeof AuthenticatedEmployeeRoute
+  '/home': typeof HomeRoute
+  '/ithelpdesk': typeof IthelpdeskRoute
+  '/unimark': typeof UnimarkRoute
+  '/forgot-password': typeof AuthForgotPasswordRoute
+  '/login': typeof AuthLoginRoute
+  '/signup': typeof AuthSignupRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/unimark': typeof AuthenticatedUnimarkRoute
-  '/': typeof AuthenticatedIndexRoute
 }
 
 export interface FileRoutesByTo {
-  '/create-employee': typeof AuthenticatedCreateEmployeeRoute
-  '/employee': typeof AuthenticatedEmployeeRoute
+  '/': typeof IndexRoute
+  '': typeof AuthenticatedRouteWithChildren
+  '/home': typeof HomeRoute
+  '/ithelpdesk': typeof IthelpdeskRoute
+  '/unimark': typeof UnimarkRoute
+  '/forgot-password': typeof AuthForgotPasswordRoute
+  '/login': typeof AuthLoginRoute
+  '/signup': typeof AuthSignupRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/unimark': typeof AuthenticatedUnimarkRoute
-  '/': typeof AuthenticatedIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
+  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/_authenticated/create-employee': typeof AuthenticatedCreateEmployeeRoute
-  '/_authenticated/employee': typeof AuthenticatedEmployeeRoute
+  '/home': typeof HomeRoute
+  '/ithelpdesk': typeof IthelpdeskRoute
+  '/unimark': typeof UnimarkRoute
+  '/_auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/signup': typeof AuthSignupRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
-  '/_authenticated/unimark': typeof AuthenticatedUnimarkRoute
-  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | ''
-    | '/create-employee'
-    | '/employee'
-    | '/profile'
-    | '/unimark'
     | '/'
+    | ''
+    | '/home'
+    | '/ithelpdesk'
+    | '/unimark'
+    | '/forgot-password'
+    | '/login'
+    | '/signup'
+    | '/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/create-employee' | '/employee' | '/profile' | '/unimark' | '/'
+  to:
+    | '/'
+    | ''
+    | '/home'
+    | '/ithelpdesk'
+    | '/unimark'
+    | '/forgot-password'
+    | '/login'
+    | '/signup'
+    | '/profile'
   id:
     | '__root__'
+    | '/'
     | '/_authenticated'
-    | '/_authenticated/create-employee'
-    | '/_authenticated/employee'
+    | '/home'
+    | '/ithelpdesk'
+    | '/unimark'
+    | '/_auth/forgot-password'
+    | '/_auth/login'
+    | '/_auth/signup'
     | '/_authenticated/profile'
-    | '/_authenticated/unimark'
-    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  HomeRoute: typeof HomeRoute
+  IthelpdeskRoute: typeof IthelpdeskRoute
+  UnimarkRoute: typeof UnimarkRoute
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthSignupRoute: typeof AuthSignupRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  HomeRoute: HomeRoute,
+  IthelpdeskRoute: IthelpdeskRoute,
+  UnimarkRoute: UnimarkRoute,
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthSignupRoute: AuthSignupRoute,
 }
 
 export const routeTree = rootRoute
@@ -191,37 +260,45 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/_authenticated"
+        "/",
+        "/_authenticated",
+        "/home",
+        "/ithelpdesk",
+        "/unimark",
+        "/_auth/forgot-password",
+        "/_auth/login",
+        "/_auth/signup"
       ]
+    },
+    "/": {
+      "filePath": "index.tsx"
     },
     "/_authenticated": {
       "filePath": "_authenticated.tsx",
       "children": [
-        "/_authenticated/create-employee",
-        "/_authenticated/employee",
-        "/_authenticated/profile",
-        "/_authenticated/unimark",
-        "/_authenticated/"
+        "/_authenticated/profile"
       ]
     },
-    "/_authenticated/create-employee": {
-      "filePath": "_authenticated/create-employee.tsx",
-      "parent": "/_authenticated"
+    "/home": {
+      "filePath": "home.tsx"
     },
-    "/_authenticated/employee": {
-      "filePath": "_authenticated/employee.tsx",
-      "parent": "/_authenticated"
+    "/ithelpdesk": {
+      "filePath": "ithelpdesk.tsx"
+    },
+    "/unimark": {
+      "filePath": "unimark.tsx"
+    },
+    "/_auth/forgot-password": {
+      "filePath": "_auth/forgot-password.tsx"
+    },
+    "/_auth/login": {
+      "filePath": "_auth/login.tsx"
+    },
+    "/_auth/signup": {
+      "filePath": "_auth/signup.tsx"
     },
     "/_authenticated/profile": {
       "filePath": "_authenticated/profile.tsx",
-      "parent": "/_authenticated"
-    },
-    "/_authenticated/unimark": {
-      "filePath": "_authenticated/unimark.tsx",
-      "parent": "/_authenticated"
-    },
-    "/_authenticated/": {
-      "filePath": "_authenticated/index.tsx",
       "parent": "/_authenticated"
     }
   }
