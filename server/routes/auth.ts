@@ -15,7 +15,7 @@ export const authRoute = new Hono<{ Bindings: Env }>()
   .use("*", luciaMiddleware)
   .use("*", userMiddleware)
   .post("/signup", zValidator("json", createUserSchema), async (c) => {
-    const { email, password, firstName, lastName, role, address } = c.req.valid("json");
+    const { email, password, firstName, lastName } = c.req.valid("json");
     const lucia = c.var.lucia!;
 
     const hashedPassword = await new Scrypt().hash(password);
@@ -28,7 +28,6 @@ export const authRoute = new Hono<{ Bindings: Env }>()
         password: hashedPassword,
         firstName,
         lastName,
-        role,
       });
       await c.var.db
         .insert(userTable)
@@ -93,11 +92,8 @@ export const authRoute = new Hono<{ Bindings: Env }>()
         email: userTable.email,
         firstName: userTable.firstName,
         lastName: userTable.lastName,
-        address: propertyTable.address,
       })
       .from(userTable)
-      .leftJoin(userPropertyTable, eq(userTable.id, userPropertyTable.userId))
-      .leftJoin(propertyTable, eq(userPropertyTable.propertyId, propertyTable.id))
       .orderBy(desc(userTable.firstName))
       .limit(100);
 
@@ -105,38 +101,8 @@ export const authRoute = new Hono<{ Bindings: Env }>()
   })
   .get("/me", async (c) => {
     try {
-      const db = c.var.db;
       const user = c.var.user!;
-
-      // Fetch properties where the user is a landlord
-      let properties: { id: number; address: string }[] = [];
-      if (user.role == "landlord") {
-        properties = await db
-          .select({
-            id: propertyTable.id,
-            address: propertyTable.address,
-          })
-          .from(propertyTable)
-          .where(eq(propertyTable.landlordId, user.id));
-      }
-      // Fetch properties where the user is a tenant
-      if (user.role == "tenant") {
-        properties = await db
-          .select({
-            id: propertyTable.id,
-            address: propertyTable.address,
-          })
-          .from(propertyTable)
-          .innerJoin(userPropertyTable, eq(propertyTable.id, userPropertyTable.propertyId))
-          .where(eq(userPropertyTable.userId, user.id));
-      }
-      // Parse user details
-      const parsedUser = authUserSchema.parse(user);
-
-      return c.json({
-        ...parsedUser,
-        properties,
-      });
+      return c.json({ user });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return c.json({ error: "Invalid data", details: error.errors }, 401);
@@ -145,31 +111,6 @@ export const authRoute = new Hono<{ Bindings: Env }>()
       }
     }
   })
-  .get("/tenants", async (c) => {
-    const db = c.var.db;
-    const user = c.var.user!;
-
-    if (user.role !== "landlord") {
-      return c.json({ error: "Forbidden. Only landlords can access tenant information." }, 403);
-    }
-
-    const tenants = await db
-      .select({
-        id: userTable.id,
-        email: userTable.email,
-        firstName: userTable.firstName,
-        lastName: userTable.lastName,
-        address: propertyTable.address,
-      })
-      .from(userTable)
-      .innerJoin(userPropertyTable, eq(userPropertyTable.userId, userTable.id))
-      .innerJoin(propertyTable, eq(userPropertyTable.propertyId, propertyTable.id))
-      .where(and(eq(propertyTable.landlordId, user.id), eq(userTable.role, "tenant")));
-
-    console.log(user.id);
-    return c.json({ tenants });
-  })
-
   .post("/logout", async (c) => {
     const lucia = c.var.lucia!;
 

@@ -3,7 +3,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const githubCache = sqliteTable("github_repo_cache", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  id: text("id").primaryKey(),
   owner: text("owner").notNull(),
   repo: text("repo").notNull(),
   data: text("data").notNull(), // Stringified JSON

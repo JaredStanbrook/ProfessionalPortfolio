@@ -1,11 +1,13 @@
 // src/GitHubRepoStats.tsx
-import React, { useEffect, useState } from "react";
 import {
+  ScatterChart,
   LineChart,
   Line,
   XAxis,
   YAxis,
+  ZAxis,
   Tooltip,
+  Scatter,
   CartesianGrid,
   ResponsiveContainer,
   Label,
@@ -14,10 +16,12 @@ import {
 import {
   getGitHubCommitDataQueryOptions,
   getGitHubCodeFrequencyQueryOptions,
+  getGitHubPunchCardQueryOptions,
 } from "@/api/githubApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const COLORS = ["#1E3A8A", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD", "#BFDBFE"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const formatNumberForAxis = (num: number) => {
   if (num >= 1000) {
@@ -29,8 +33,10 @@ const formatNumberForAxis = (num: number) => {
 };
 
 export function GitHubRepoCommitData() {
-  const { isPending, error, data } = useQuery(getGitHubCommitDataQueryOptions);
-
+  const { data, isLoading, error } = useQuery(
+    getGitHubCommitDataQueryOptions("JaredStanbrook", "it-service-desk")
+  );
+  if (!data) return null; // Handle the case where data is not available
   if (error) return "An error has occurred: " + error.message;
 
   const processWeeklyData = (data: { week: number; total: number }[]) => {
@@ -38,9 +44,10 @@ export function GitHubRepoCommitData() {
       .filter((activity) => activity.total > 0) // Only include weeks with commits
       .map((activity) => ({
         week: new Date(activity.week * 1000).toLocaleDateString("en-US", {
-          month: "short",
           day: "2-digit",
-        }), // Format as MMM-DD
+          month: "short",
+          year: "2-digit",
+        }), // Format as MMM-DD-YY
         total: activity.total,
       }));
   };
@@ -48,7 +55,7 @@ export function GitHubRepoCommitData() {
   return (
     <>
       <h2>Weekly Commits</h2>
-      {!isPending ? (
+      {!isLoading ? (
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={processWeeklyData(data)}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -74,25 +81,30 @@ export function GitHubRepoCommitData() {
 }
 
 export function GitHubRepoCodeFrequency() {
-  const { isPending, error, data } = useQuery(getGitHubCodeFrequencyQueryOptions);
-
+  const { data, isLoading, error } = useQuery(
+    getGitHubCodeFrequencyQueryOptions("JaredStanbrook", "it-service-desk")
+  );
+  if (!data) return null; // Handle the case where data is not available
   if (error) return "An error has occurred: " + error.message;
 
   const processCodeFrequency = (data: [number, number, number][]) => {
-    return data.map(([date, additions, deletions]) => ({
-      week: new Date(date * 1000).toLocaleDateString("en-US", {
-        month: "short",
-        day: "2-digit",
-      }), // Format as MMM-DD
-      additions,
-      deletions,
-    }));
+    return data
+      .filter(([_, additions, deletions]) => additions !== 0 || deletions !== 0) // Keep only entries with changes
+      .map(([date, additions, deletions]) => ({
+        week: new Date(date * 1000).toLocaleDateString("en-US", {
+          day: "2-digit",
+          month: "short",
+          year: "2-digit",
+        }),
+        additions,
+        deletions,
+      }));
   };
 
   return (
     <>
       <h2>Code Frequency</h2>
-      {!isPending ? (
+      {!isLoading ? (
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={processCodeFrequency(data)}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -120,6 +132,74 @@ export function GitHubRepoCodeFrequency() {
       ) : (
         <div className="text-red-500 hover:underline">Error retrieving frequency data.</div>
       )}
+    </>
+  );
+}
+
+export function GitHubRepoPunchCard() {
+  const { data, isLoading, error } = useQuery(
+    getGitHubPunchCardQueryOptions("JaredStanbrook", "it-service-desk")
+  );
+
+  if (isLoading) return <p className="text-sm text-gray-500">Loading punch card...</p>;
+  if (error) return <p className="text-red-500">Error loading data: {error.message}</p>;
+  if (!data) return null;
+
+  const punchData = data
+    .filter(([_, __, commits]: [number, number, number]) => commits > 0)
+    .map(([day, hour, commits]: [number, number, number]) => ({
+      day: DAYS[day],
+      dayIndex: day,
+      hour,
+      commits,
+    }));
+
+  return (
+    <>
+      <h2 className="text-lg font-semibold mb-4">Commits by Hour and Day</h2>
+      <ResponsiveContainer width="100%" height={400}>
+        <ScatterChart margin={{ top: 10, right: 20, left: 30, bottom: 40 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            type="number"
+            dataKey="hour"
+            name="Hour"
+            tickFormatter={(h) => `${h}:00`}
+            domain={[0, 23]}
+            label={{ value: "Hour of Day", position: "bottom", offset: 0 }}
+            tick={{ fontSize: 12 }}
+          />
+          <YAxis
+            type="category"
+            dataKey="day"
+            name="Day"
+            tick={{ fontSize: 12 }}
+            label={{
+              value: "Day of Week",
+              angle: -90,
+              position: "insideLeft",
+              fontSize: 13,
+            }}
+          />
+          <ZAxis
+            type="number"
+            dataKey="commits"
+            name="Commits"
+            range={[60, 300]} // Bubble size range
+          />
+          <Tooltip
+            formatter={(value: any, name: any, props: any) => {
+              if (name === "Commits") {
+                const { payload } = props;
+                const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                return [`${value} commits`, `${days[payload.day]} @ ${payload.hour}:00`];
+              }
+              return value;
+            }}
+          />
+          <Scatter name="Commits" data={punchData} fill="#3B82F6" />
+        </ScatterChart>
+      </ResponsiveContainer>
     </>
   );
 }

@@ -181,3 +181,4 @@ wrangler.toml
 worker-configuration.d.ts
 drizzle/
 
+frontend/src/routeTree.gen.ts

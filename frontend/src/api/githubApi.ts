@@ -1,48 +1,32 @@
-import { githubRoute } from "@server/routes/github";
-import { hc } from "hono/client";
 import { queryOptions } from "@tanstack/react-query";
-export const github = hc<typeof githubRoute>("/api/github");
 
-interface GitHubErrorResponse {
-  data?: {
-    message?: string;
-    documentation_url?: string;
-    status?: string;
-  };
-  error?: string;
-}
-
-export async function getGitHubCommitData() {
-  const res = await github.stats.commit_activity.$get();
+export async function getGitHubData(owner: string, repo: string, ext: string): Promise<any> {
+  const res = await fetch(`/api/github/${owner}/${repo}/${ext}`);
 
   if (!res.ok) {
-    throw new Error("Server error");
+    throw new Error(`GitHub API fetch failed with status ${res.status}`);
   }
-  const data = await res.json();
-  if (!data) {
-    throw new Error("Server error");
-  }
-  console.log(data);
-  return data;
+
+  const json = await res.json();
+  return json.data;
 }
 
-export const getGitHubCommitDataQueryOptions = queryOptions({
-  queryKey: ["get-github-commit-data"],
-  queryFn: getGitHubCommitData,
-  staleTime: 1000 * 60 * 5, // Cache data for 5 minutes
-});
+export const getGitHubCommitDataQueryOptions = (owner: string, repo: string) =>
+  queryOptions({
+    queryKey: ["github-commit-activity", owner, repo],
+    queryFn: () => getGitHubData(owner, repo, "stats/commit_activity"),
+    staleTime: 1000 * 60 * 5,
+  });
 
-export async function getGitHubCodeFrequency() {
-  const res = await github.stats.code_frequency.$get();
-  if (!res.ok) {
-    throw new Error("Server error");
-  }
-  const data = await res.json();
-  return data;
-}
-
-export const getGitHubCodeFrequencyQueryOptions = queryOptions({
-  queryKey: ["get-github-code-frequency"],
-  queryFn: getGitHubCodeFrequency,
-  staleTime: 1000 * 60 * 5, // Cache data for 5 minutes
-});
+export const getGitHubCodeFrequencyQueryOptions = (owner: string, repo: string) =>
+  queryOptions({
+    queryKey: ["github-code-frequency", owner, repo],
+    queryFn: () => getGitHubData(owner, repo, "stats/code_frequency"),
+    staleTime: 1000 * 60 * 5,
+  });
+export const getGitHubPunchCardQueryOptions = (owner: string, repo: string) =>
+  queryOptions({
+    queryKey: ["github-punch-card", owner, repo],
+    queryFn: () => getGitHubData(owner, repo, "stats/punch_card"),
+    staleTime: 1000 * 60 * 5,
+  });

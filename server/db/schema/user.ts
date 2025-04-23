@@ -20,12 +20,11 @@ export const insertUserSchema = createInsertSchema(user, {
   lastName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["landlord", "tenant"]),
 });
 
 // Schema for selecting a user - can be used to validate API responses
 export const selectUserSchema = createSelectSchema(user);
 export type User = Pick<
   z.infer<typeof selectUserSchema>,
-  "id" | "email" | "firstName" | "lastName" | "role"
+  "id" | "email" | "firstName" | "lastName"
 >;

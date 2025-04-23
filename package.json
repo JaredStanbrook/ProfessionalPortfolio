@@ -8,11 +8,11 @@
     "start": "bunx wrangler dev",
     "dev": "bunx wrangler dev --live-reload",
     "build": "bunx drizzle-kit generate && cd frontend && bun run build",
-    "local": "bunx drizzle-kit generate && bunx wrangler d1 migrations apply sheoak_ct",
-    "migrate": "bunx wrangler d1 migrations apply sheoak_ct",
+    "local": "bunx drizzle-kit generate && bunx wrangler d1 migrations apply professional-portfolio-db",
+    "migrate": "bunx wrangler d1 migrations apply professional-portfolio-db",
     "gen-schema": "bunx drizzle-kit generate",
     "gen-types": "bunx wrangler types",
-    "pre-deploy": "bunx wrangler d1 migrations apply sheoak_ct --remote",
+    "pre-deploy": "bunx wrangler d1 migrations apply professional-portfolio-db --remote",
     "deploy": "bunx run pre-deploy && wrangler deploy --env production"
   },
   "devDependencies": {
