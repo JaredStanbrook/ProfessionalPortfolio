@@ -180,5 +180,6 @@ bun.lock.d
 wrangler.toml
 worker-configuration.d.ts
 drizzle/
+.dev.vars*
 
 frontend/src/routeTree.gen.ts
