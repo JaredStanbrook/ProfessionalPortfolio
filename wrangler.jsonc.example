@@ -1,0 +1,80 @@
+{
+  "name": "professionalportfolio",
+  "compatibility_date": "2025-01-01",
+  "main": "worker/index.ts",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "single-page-application",
+  },
+  "routes": [
+    {
+      "pattern": "dev.jared.stanbrook.me",
+      "custom_domain": true,
+    },
+  ],
+  "vars": {
+    "ENVIRONMENT": "staging",
+  },
+  "env": {
+    "production": {
+      "vars": {
+        "ENVIRONMENT": "production",
+      },
+      "routes": [
+        {
+          "pattern": "jared.stanbrook.me",
+          "custom_domain": true,
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "d1_name",
+          "database_id": "d1_id",
+          "migrations_dir": "drizzle",
+        },
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "kv_binding",
+          "id": "kv_id",
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "R2",
+          "bucket_name": "r2_name",
+        },
+      ],
+    },
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "d1_name",
+      "database_id": "d1_id",
+      "migrations_dir": "drizzle",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "kv_binding",
+      "id": "kv_id",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "r2_name",
+    },
+  ],
+  "observability": {
+    "enabled": true,
+  },
+  "dev": {
+    "port": 3000,
+    "local_protocol": "http",
+  },
+}

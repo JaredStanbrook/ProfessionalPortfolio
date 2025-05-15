@@ -4,30 +4,31 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
-export default tseslint.config(
-  { ignores: ["dist"] },
+export default [
+  reactRefresh.configs.recommended,
+  reactHooks.configs["recommended-latest"],
+  js.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+      },
+      parserOptions: {
+        project: "./tsconfig.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
-    plugins: {
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
-    },
-    rules: {
-      ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-    },
-  }
-);
-
-// Remove ...tseslint.configs.recommended and replace with this
-//...tseslint.configs.recommendedTypeChecked,
-// Alternatively, use this for stricter rules
-//...tseslint.configs.strictTypeChecked,
-// Optionally, add this for stylistic rules
-//...tseslint.configs.stylisticTypeChecked,
-// React settings
+  },
+  { ignores: ["dist/**/*"] },
+];
