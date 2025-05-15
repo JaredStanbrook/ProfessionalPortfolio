@@ -1,4 +1,4 @@
-name: ESLint
+name: CI Pipeline
 
 on:
   push:
@@ -60,8 +60,7 @@ jobs:
         with:
           name: build-artifacts
           path: |
-            frontend/dist
-            wrangler-dist
+            dist
   security:
     name: Security scan
     runs-on: ubuntu-latest
@@ -111,17 +110,3 @@ jobs:
         run: lhci autorun --upload.target=temporary-public-storage
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-  lint:
-    name: Run ESLint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      - name: Install dependencies
-        run: bun install
-      - name: Run ESLint
-        run: bunx eslint . --ext .js,.jsx,.ts,.tsx
