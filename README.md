@@ -1,5 +1,7 @@
 # Professional Portfolio
 
+[![CI Pipeline](https://github.com/JaredStanbrook/ProfessionalPortfolio/actions/workflows/ci-pipeline.yml/badge.svg)](https://github.com/JaredStanbrook/ProfessionalPortfolio/actions/workflows/ci-pipeline.yml)
+
 A modern, full-stack portfolio template built with [Hono](https://hono.dev/), [React](https://react.dev/), [Drizzle ORM](https://orm.drizzle.team/), and [Bun](https://bun.sh/).  
 Easily deployable to Cloudflare Workers, with a focus on developer experience, scalability, and performance.
 
