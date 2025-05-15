@@ -19,9 +19,6 @@ const app = new Hono<{ Bindings: Env }>()
     })
   )
   .basePath("/api")
-  .get("/", (c) => {
-    return c.text("Hello World");
-  })
   .route("/auth", authRoute)
   .route("/github", githubRoute)
   .route("/home", homeRoute)
