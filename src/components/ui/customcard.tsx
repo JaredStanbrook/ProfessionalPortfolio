@@ -14,7 +14,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
       <div
         ref={ref}
         className={cn(
-          "absolute -inset-x-4 -inset-y-4 z-0 hidden rounded-2xl transition motion-reduce:transition-none lg:-inset-x-6 lg:block lg:group-hover:bg-primary/10 lg:group-hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] ",
+          "absolute -inset-x-4 -inset-y-4 z-0 hidden rounded-lg transition motion-reduce:transition-none lg:-inset-x-6 lg:block lg:group-hover:bg-primary/10 lg:group-hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] ",
           className
         )}
         {...props}></div>
@@ -62,7 +62,7 @@ const CardImage = React.forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTM
       decoding={decoding}
       data-nimg="1"
       className={cn(
-        "rounded border-2 border-foreground/10 transition group-hover:border-slate-900/30 sm:order-1 sm:col-span-2 sm:translate-y-1",
+        "rounded:lg border-2 border-foreground/10 transition group-hover:border-slate-900/30 sm:order-1 sm:col-span-2 sm:translate-y-1",
         className
       )}
       style={{ color: "transparent" }}
@@ -86,7 +86,7 @@ const CardTitle = React.forwardRef<
         )}>
         <span
           className={cn(
-            "absolute -inset-x-4 -inset-y-2.5 hidden rounded md:-inset-x-6 md:-inset-y-4 lg:block",
+            "absolute -inset-x-4 -inset-y-2.5 hidden rounded:lg md:-inset-x-6 md:-inset-y-4 lg:block",
             className
           )}></span>
         <span className={cn("inline-block", className)}>
@@ -149,7 +149,7 @@ const CardItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     <div ref={ref} className={cn("mr-1.5 mt-2", className)} {...props}>
       <div
         className={cn(
-          "flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium leading-5 text-primary"
+          "flex items-center rounded-xl bg-primary/10 px-3 py-1 text-xs font-medium leading-5 text-primary"
         )}>
         {props.children}
       </div>

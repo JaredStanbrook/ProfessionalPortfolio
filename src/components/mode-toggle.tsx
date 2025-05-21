@@ -1,9 +1,9 @@
-import { Moon, Sun, Laptop, Croissant } from "lucide-react";
+import { Moon, Sun, Laptop, Croissant, Binary } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { useState } from "react";
 
-const themes = ["light", "dark", "system", "baked"] as const;
+const themes = ["light", "dark", "system", "baked", "techno"] as const;
 
 export function ModeToggle() {
   const { theme, setTheme } = useTheme();
@@ -23,6 +23,7 @@ export function ModeToggle() {
       <Moon className={`h-5 w-5 ${theme === "dark" ? "" : "hidden"}`} />
       <Laptop className={`h-5 w-5 ${theme === "system" ? "" : "hidden"}`} />
       <Croissant className={`h-5 w-5 ${theme === "baked" ? "" : "hidden"}`} />
+      <Binary className={`h-5 w-5 ${theme === "techno" ? "" : "hidden"}`} />
       <span className="sr-only">Toggle theme</span>
     </Button>
   );
