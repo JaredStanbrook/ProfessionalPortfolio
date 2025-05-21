@@ -10,10 +10,11 @@ Easily deployable to Cloudflare Workers, with a focus on developer experience, s
 ## 🚀 Features
 
 - **Full-stack:** Hono API routes, React frontend, Drizzle ORM, SQLite (D1)
-- **Modern Tooling:** Bun, Vite, TypeScript, Tailwind CSS, Radix UI, Zod validation
+- **Modern Tooling:** Bun, Vite, TypeScript, Tailwind CSS, Radix UI, Zod 4 validation
 - **Authentication:** Lucia Auth
 - **Production Ready:** Cloudflare Workers, Wrangler, CI/CD scripts
 - **Developer Experience:** Fast local dev, hot reload, unified config, type safety
+- **Automated Quality:** Husky for automatic linting of commit messages, code, and running tests on commit/push
 
 ---
 
