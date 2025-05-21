@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { generateId, Scrypt } from "lucia";
 
-import { eq, desc, sum, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { dbMiddleware, luciaMiddleware, userMiddleware } from "../db";
 
 import { user as userTable, insertUserSchema, selectUserSchema } from "../db/schema/user";

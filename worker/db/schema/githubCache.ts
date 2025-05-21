@@ -1,6 +1,5 @@
 import { integer, text, sqliteTable } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
 
 export const githubCache = sqliteTable("github_repo_cache", {
   id: text("id").primaryKey(),
@@ -10,12 +9,12 @@ export const githubCache = sqliteTable("github_repo_cache", {
   expiresAt: integer("expires_at").notNull(), // Unix timestamp
 });
 
-// Insert schema
+// Insert schema with proper refinement functions
 export const insertGithubRepoCacheSchema = createInsertSchema(githubCache, {
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  data: z.string(), // should be JSON.stringify(response)
-  expiresAt: z.number().int().positive(), // Unix timestamp
+  // Use refinement functions instead of direct schema assignments
+  owner: (schema) => schema.min(1),
+  repo: (schema) => schema.min(1),
+  expiresAt: (schema) => schema.int().positive(), // Unix timestamp
 });
 
 // Select schema

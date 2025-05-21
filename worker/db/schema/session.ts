@@ -1,6 +1,5 @@
 import { integer, text, sqliteTable } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
 import { user } from "./user.ts";
 
 export const session = sqliteTable("session", {

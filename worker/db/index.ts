@@ -2,7 +2,7 @@ import { createMiddleware } from "hono/factory";
 import { drizzle } from "drizzle-orm/d1";
 import { DrizzleSQLiteAdapter } from "@lucia-auth/adapter-drizzle";
 import { verifyRequestOrigin, Lucia } from "lucia";
-import type { User, Session } from "lucia";
+import type { Session } from "lucia";
 import { user as userTable } from "./schema/user.ts";
 
 import { session as sessionTable } from "./schema/session.ts";

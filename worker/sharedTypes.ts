@@ -1,8 +1,8 @@
 import { insertUserSchema } from "./db/schema/user";
 import { insertSessionSchema } from "./db/schema/session";
 
-import { z } from "zod";
-import type { selectGithubCacheSchema } from "./db/schema/githubCache";
+import { z } from "zod/v4";
+import { selectGithubCacheSchema } from "./db/schema/githubCache";
 
 export const createUserSchema = insertUserSchema
   .omit({
@@ -10,11 +10,9 @@ export const createUserSchema = insertUserSchema
     emailVerified: true,
     phone: true,
   })
-  .merge(
-    z.object({
-      address: z.string().optional(),
-    })
-  );
+  .extend({
+    address: z.string().optional(),
+  });
 export const authUserSchema = insertUserSchema.omit({
   id: true,
   password: true,
