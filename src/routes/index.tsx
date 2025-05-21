@@ -18,13 +18,13 @@ export const Route = createFileRoute("/")({
 function Homepage() {
   return (
     <>
-      <div className="lg:flex lg:justify-between lg:gap-4">
+      <div className="lg:flex lg:justify-between lg:gap-4 text-muted-foreground">
         <header className="lg:sticky lg:top-0 lg:flex lg:max-h-screen lg:w-1/2 lg:flex-col lg:justify-between lg:py-24">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
               <a href="/navigation">Jared Stanbrook</a>
             </h1>
-            <h2 className="mt-3 text-lg font-medium tracking-tight text-slate-900 sm:text-xl">
+            <h2 className="mt-3 text-lg font-medium tracking-tight text-foreground sm:text-xl">
               IT Student
             </h2>
             <p className="mt-4 max-w-xs leading-normal">Perth, Western Australia</p>
@@ -33,24 +33,24 @@ function Homepage() {
               <ul className="mt-16 w-max">
                 <li>
                   <a className="group flex items-center py-3 active" href="#about">
-                    <span className="nav-indicator mr-4 h-px w-8 bg-slate-600 transition-all group-hover:w-16 group-hover:bg-slate-900 group-focus-visible:w-16 group-focus-visible:bg-slate-900 motion-reduce:transition-none"></span>
-                    <span className="nav-text text-xs font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-900 group-focus-visible:text-slate-900">
+                    <span className="nav-indicator mr-4 h-px w-8 bg-muted-foreground transition-all group-hover:w-16 group-hover:bg-foregound group-focus-visible:w-16 group-focus-visible:bg-foregound motion-reduce:transition-none"></span>
+                    <span className="nav-text text-xs font-bold uppercase tracking-widest group-hover:text-foreground group-focus-visible:text-foreground">
                       About
                     </span>
                   </a>
                 </li>
                 <li>
                   <a className="group flex items-center py-3" href="#experience">
-                    <span className="nav-indicator mr-4 h-px w-8 bg-slate-600 transition-all group-hover:w-16 group-hover:bg-slate-900 group-focus-visible:w-16 group-focus-visible:bg-slate-900 motion-reduce:transition-none"></span>
-                    <span className="nav-text text-xs font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-900 group-focus-visible:text-slate-900">
+                    <span className="nav-indicator mr-4 h-px w-8 bg-muted-foreground transition-all group-hover:w-16 group-hover:bg-foregound group-focus-visible:w-16 group-focus-visible:bg-foregound motion-reduce:transition-none"></span>
+                    <span className="nav-text text-xs font-bold uppercase tracking-widest group-hover:text-foreground group-focus-visible:text-foreground">
                       Experience
                     </span>
                   </a>
                 </li>
                 <li>
                   <a className="group flex items-center py-3" href="#projects">
-                    <span className="nav-indicator mr-4 h-px w-8 bg-slate-600 transition-all group-hover:w-16 group-hover:bg-slate-900 group-focus-visible:w-16 group-focus-visible:bg-slate-900 motion-reduce:transition-none"></span>
-                    <span className="nav-text text-xs font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-900 group-focus-visible:text-slate-900">
+                    <span className="nav-indicator mr-4 h-px w-8 bg-muted-foreground transition-all group-hover:w-16 group-hover:bg-foregound group-focus-visible:w-16 group-focus-visible:bg-foregound motion-reduce:transition-none"></span>
+                    <span className="nav-text text-xs font-bold uppercase tracking-widest group-hover:text-foreground group-focus-visible:text-foreground">
                       Projects
                     </span>
                   </a>
@@ -61,7 +61,7 @@ function Homepage() {
           <ul className="ml-1 mt-8 flex items-center" aria-label="Social media">
             <li className="mr-5 text-xs shrink-0">
               <a
-                className="block hover:text-slate-900"
+                className="block hover:text-foreground"
                 href="https://github.com/JaredStanbrook"
                 target="_blank"
                 rel="noreferrer noopener"
@@ -80,7 +80,7 @@ function Homepage() {
             </li>
             <li className="mr-5 text-xs shrink-0">
               <a
-                className="block hover:text-slate-900"
+                className="block hover:text-foreground"
                 href="https://www.linkedin.com/in/jaredstanbrook/"
                 target="_blank"
                 rel="noreferrer noopener"
@@ -99,7 +99,7 @@ function Homepage() {
             </li>
             <li className="mr-5 text-xs shrink-0">
               <a
-                className="block hover:text-slate-900"
+                className="block hover:text-foreground"
                 href="https://youtube.com/@JaredStanbrook"
                 target="_blank"
                 rel="noreferrer noopener"
@@ -119,7 +119,7 @@ function Homepage() {
             {/*
                         <li className="mr-5 text-xs shrink-0">
                             <a
-                                className="block hover:text-slate-900"
+                                className="block hover:text-foreground"
                                 href="https://codepen.io/bchiang7"
                                 target="_blank"
                                 rel="noreferrer noopener"
@@ -144,7 +144,7 @@ function Homepage() {
                         </li>
                         <li className="mr-5 text-xs shrink-0">
                             <a
-                                className="block hover:text-slate-900"
+                                className="block hover:text-foreground"
                                 href="https://instagram.com/bchiang7"
                                 target="_blank"
                                 rel="noreferrer noopener"
@@ -163,7 +163,7 @@ function Homepage() {
                         </li>
                         <li className="mr-5 text-xs shrink-0">
                             <a
-                                className="block hover:text-slate-900"
+                                className="block hover:text-foreground"
                                 href="https://twitter.com/bchiang7"
                                 target="_blank"
                                 rel="noreferrer noopener"
@@ -185,13 +185,13 @@ function Homepage() {
                         */}
           </ul>
         </header>
-        <main id="content" className="pt-24 lg:w-1/2 lg:py-24">
+        <main id="content" className="pt-24 lg:w-1/2 lg:py-24 text-muted-foreground">
           <section
             id="about"
             className="mb-16 scroll-mt-16 md:mb-24 lg:mb-36 lg:scroll-mt-24"
             aria-label="About me">
-            <div className="sticky top-0 z-20 -mx-6 mb-4 w-screen bg-white/75 px-6 py-5 backdrop-blur md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-900 lg:sr-only">
+            <div className="sticky top-0 z-20 -mx-6 mb-4 w-screen px-6 py-5 backdrop-blur md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-foreground lg:sr-only">
                 About
               </h2>
             </div>
@@ -218,7 +218,7 @@ function Homepage() {
             className="mb-16 scroll-mt-16 md:mb-24 lg:mb-36 lg:scroll-mt-24"
             aria-label="Work experience">
             <div className="sticky top-0 z-20 -mx-6 mb-4 w-screen bg-white/75 px-6 py-5 backdrop-blur md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-900 lg:sr-only">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-foreground lg:sr-only">
                 Experience
               </h2>
             </div>
@@ -226,7 +226,27 @@ function Homepage() {
               <ol className="group/list">
                 <li className="mb-12">
                   <Card>
-                    <CardHeader>August 2024 — Present</CardHeader>
+                    <CardHeader>Feb — Jun 2025</CardHeader>
+                    <CardContent>
+                      <CardTitle href="/">Web Developer – Envenge Group</CardTitle>
+                      <CardDescription>
+                        Built a Django-based web application for monitoring environmental compliance
+                        and project obligations. Contributed to backend logic, user role management,
+                        and documentation workflows in a rapid development team setting. Used Docker
+                        and VS Code dev containers for a consistent development environment.
+                      </CardDescription>
+                      <CardFooter>
+                        <CardItem>Django</CardItem>
+                        <CardItem>Docker</CardItem>
+                        <CardItem>Backend Development</CardItem>
+                        <CardItem>Team Collaboration</CardItem>
+                      </CardFooter>
+                    </CardContent>
+                  </Card>
+                </li>
+                <li className="mb-12">
+                  <Card>
+                    <CardHeader>Aug — Nov 2024</CardHeader>
                     <CardContent>
                       <CardTitle href="/it-help-desk">
                         Student IT Service Desk – Murdoch University
@@ -248,7 +268,7 @@ function Homepage() {
                 </li>
                 <li className="mb-12">
                   <Card>
-                    <CardHeader>2024 — Present</CardHeader>
+                    <CardHeader>Jan 2023 — Aug 2024</CardHeader>
                     <CardContent>
                       <CardTitle href="/">Independent | Disability Support Worker</CardTitle>
                       <CardDescription>
@@ -313,7 +333,7 @@ function Homepage() {
               </ol>
               <div className="mt-12">
                 <a
-                  className="inline-flex items-baseline font-medium leading-tight text-slate-900 hover:text-blue-400 focus-visible:text-blue-400 font-semibold text-slate-900 group/link text-base"
+                  className="inline-flex items-baseline leading-tight text-foreground hover:text-primary focus-visible:text-primary font-semibold group/link text-base"
                   href="/resume.pdf"
                   target="_blank"
                   rel="noreferrer noopener"
@@ -343,8 +363,8 @@ function Homepage() {
             id="projects"
             className="mb-16 scroll-mt-16 md:mb-24 lg:mb-36 lg:scroll-mt-24"
             aria-label="Selected projects">
-            <div className="sticky top-0 z-20 -mx-6 mb-4 w-screen bg-white/75 px-6 py-5 backdrop-blur md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-900 lg:sr-only">
+            <div className="sticky top-0 z-20 -mx-6 mb-4 w-screen px-6 py-5 backdrop-blur md:-mx-12 md:px-12 lg:sr-only lg:relative lg:top-auto lg:mx-auto lg:w-full lg:px-0 lg:py-0 lg:opacity-0">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-foreground lg:sr-only">
                 Projects
               </h2>
             </div>
@@ -353,7 +373,32 @@ function Homepage() {
                 <li className="mb-12">
                   <Card>
                     <CardContent>
-                      <CardTitle href="/about">IT Service Desk Portal | Website</CardTitle>
+                      <CardTitle href="/">Greenova – Envenge Group</CardTitle>
+                      <CardDescription>
+                        Developed <strong>Greenova</strong>, a Django-based web application for
+                        streamlining environmental management and compliance tracking. The platform
+                        featured a modular, accessible interface and supported efficient workflows
+                        for managing obligations, documentation, and team responsibilities. Used
+                        Docker and a VS Code dev container to ensure a consistent and reproducible
+                        development environment.
+                      </CardDescription>
+
+                      <CardFooter>
+                        <CardItem>Django</CardItem>
+                        <CardItem>Docker</CardItem>
+                        <CardItem>VS Code Dev Containers</CardItem>
+                        <CardItem>PicoCSS</CardItem>
+                        <CardItem>Python</CardItem>
+                        <CardItem>Github</CardItem>
+                      </CardFooter>
+                    </CardContent>
+                    <CardImage src="https://jared.stanbrook.me/itservicedesk.png"></CardImage>
+                  </Card>
+                </li>
+                <li className="mb-12">
+                  <Card>
+                    <CardContent>
+                      <CardTitle href="/">IT Service Desk Portal | Website</CardTitle>
                       <CardDescription>
                         This website was developed to address the unique needs of our student-run
                         support desk, enhancing efficiency by digitising client records and feedback
@@ -369,13 +414,13 @@ function Homepage() {
                         <CardItem>SQLite</CardItem>
                       </CardFooter>
                     </CardContent>
-                    <CardImage src="https://jaredstanbrook.com/itservicedesk.png"></CardImage>
+                    <CardImage src="https://jared.stanbrook.me/itservicedesk.png"></CardImage>
                   </Card>
                 </li>
                 <li className="mb-12">
                   <Card>
                     <CardContent>
-                      <CardTitle href="/about">MOBS | Invoice System</CardTitle>
+                      <CardTitle href="/">MOBS | Invoice System</CardTitle>
                       <CardDescription>
                         I developed My Own Business System to cater specifically to my needs as an
                         independent disability support worker, streamlining the process of creating
@@ -388,7 +433,7 @@ function Homepage() {
                         <CardItem>Node.js</CardItem>
                       </CardFooter>
                     </CardContent>
-                    <CardImage src="https://jaredstanbrook.com/mobs.png"></CardImage>
+                    <CardImage src="https://jared.stanbrook.me/mobs.png"></CardImage>
                   </Card>
                 </li>
                 <li className="mb-12">
@@ -407,21 +452,21 @@ function Homepage() {
                         <CardItem>Bun</CardItem>
                       </CardFooter>
                     </CardContent>
-                    <CardImage src="https://jaredstanbrook.com/portfolio.png"></CardImage>
+                    <CardImage src="https://jared.stanbrook.me/portfolio.png"></CardImage>
                   </Card>
                 </li>
               </ul>
               <div className="mt-12">
                 <a
-                  className="inline-flex items-center font-medium leading-tight text-slate-900 font-semibold text-slate-900 group"
+                  className="inline-flex items-center font-medium leading-tight text-foreground group"
                   aria-label="View Full Project Archive"
                   href="/archive">
                   <span>
-                    <span className="border-b border-transparent pb-px transition group-hover:border-blue-400 motion-reduce:transition-none">
+                    <span className="border-b border-transparent pb-px transition group-hover:border-primary motion-reduce:transition-none">
                       View Full Project&nbsp;
                     </span>
                     <span className="whitespace-nowrap">
-                      <span className="border-b border-transparent pb-px transition group-hover:border-blue-400 motion-reduce:transition-none">
+                      <span className="border-b border-transparent pb-px transition group-hover:border-primary motion-reduce:transition-none">
                         Archive
                       </span>
                       <svg
@@ -441,12 +486,12 @@ function Homepage() {
               </div>
             </div>
           </section>
-          <footer className="max-w-md pb-16 text-sm text-slate-500 sm:pb-0">
+          <footer className="max-w-md pb-16 text-sm text-secondary-foreground sm:pb-0">
             <p>
               Coded in&nbsp;
               <a
                 href="https://code.visualstudio.com/"
-                className="font-medium text-slate-400 hover:text-blue-400 focus-visible:text-blue-400"
+                className="font-medium text-muted-foreground hover:text-primary focus-visible:text-primary"
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label="Visual Studio Code (opens in a new tab)">
@@ -455,7 +500,7 @@ function Homepage() {
               &nbsp; with my bare hands. Built with&nbsp;
               <a
                 href="https://react.dev/"
-                className="font-medium text-slate-400 hover:text-blue-400 focus-visible:text-blue-400"
+                className="font-medium text-muted-foreground hover:text-primary focus-visible:text-primary"
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label="React.dev (opens in a new tab)">
@@ -464,7 +509,7 @@ function Homepage() {
               &nbsp;and&nbsp;
               <a
                 href="https://tailwindcss.com/"
-                className="font-medium text-slate-400 hover:text-blue-400 focus-visible:text-blue-400"
+                className="font-medium text-muted-foreground hover:text-primary focus-visible:text-primary"
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label="Tailwind CSS (opens in a new tab)">
@@ -473,7 +518,7 @@ function Homepage() {
               , deployed with&nbsp;
               <a
                 href="https://www.cloudflare.com"
-                className="font-medium text-slate-400 hover:text-blue-400 focus-visible:text-blue-400"
+                className="font-medium text-muted-foreground hover:text-primary focus-visible:text-primary"
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label="Cloudflare (opens in a new tab)">

@@ -63,7 +63,7 @@ function Navigation() {
   const menu = defaultMenu;
 
   return (
-    <div className="fixed inset-0 bg-black text-white w-screen h-screen p-10 flex flex-col items-center justify-center gap-6 overflow-auto">
+    <div className="fixed inset-0 bg-background text-foregound w-screen h-screen p-10 flex flex-col items-center justify-center gap-6 overflow-auto">
       <div className="text-center space-y-6">
         <h1 className="text-5xl font-bold">My Website</h1>
         <div className="flex flex-col gap-x-6">

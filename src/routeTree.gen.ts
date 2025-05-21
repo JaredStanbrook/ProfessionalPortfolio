@@ -12,7 +12,6 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as UnimarkImport } from './routes/unimark'
-import { Route as ResumeGenImport } from './routes/resume-gen'
 import { Route as ResumeBuilderImport } from './routes/resume-builder'
 import { Route as NavigationImport } from './routes/navigation'
 import { Route as ItHelpDeskImport } from './routes/it-help-desk'
@@ -28,12 +27,6 @@ import { Route as AuthLoginImport } from './routes/_auth/login'
 const UnimarkRoute = UnimarkImport.update({
   id: '/unimark',
   path: '/unimark',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ResumeGenRoute = ResumeGenImport.update({
-  id: '/resume-gen',
-  path: '/resume-gen',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -136,13 +129,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResumeBuilderImport
       parentRoute: typeof rootRoute
     }
-    '/resume-gen': {
-      id: '/resume-gen'
-      path: '/resume-gen'
-      fullPath: '/resume-gen'
-      preLoaderRoute: typeof ResumeGenImport
-      parentRoute: typeof rootRoute
-    }
     '/unimark': {
       id: '/unimark'
       path: '/unimark'
@@ -195,7 +181,6 @@ export interface FileRoutesByFullPath {
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
   '/resume-builder': typeof ResumeBuilderRoute
-  '/resume-gen': typeof ResumeGenRoute
   '/unimark': typeof UnimarkRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
@@ -209,7 +194,6 @@ export interface FileRoutesByTo {
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
   '/resume-builder': typeof ResumeBuilderRoute
-  '/resume-gen': typeof ResumeGenRoute
   '/unimark': typeof UnimarkRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
@@ -224,7 +208,6 @@ export interface FileRoutesById {
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
   '/resume-builder': typeof ResumeBuilderRoute
-  '/resume-gen': typeof ResumeGenRoute
   '/unimark': typeof UnimarkRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/signup': typeof AuthSignupRoute
@@ -240,7 +223,6 @@ export interface FileRouteTypes {
     | '/it-help-desk'
     | '/navigation'
     | '/resume-builder'
-    | '/resume-gen'
     | '/unimark'
     | '/login'
     | '/signup'
@@ -253,7 +235,6 @@ export interface FileRouteTypes {
     | '/it-help-desk'
     | '/navigation'
     | '/resume-builder'
-    | '/resume-gen'
     | '/unimark'
     | '/login'
     | '/signup'
@@ -266,7 +247,6 @@ export interface FileRouteTypes {
     | '/it-help-desk'
     | '/navigation'
     | '/resume-builder'
-    | '/resume-gen'
     | '/unimark'
     | '/_auth/login'
     | '/_auth/signup'
@@ -281,7 +261,6 @@ export interface RootRouteChildren {
   ItHelpDeskRoute: typeof ItHelpDeskRoute
   NavigationRoute: typeof NavigationRoute
   ResumeBuilderRoute: typeof ResumeBuilderRoute
-  ResumeGenRoute: typeof ResumeGenRoute
   UnimarkRoute: typeof UnimarkRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
@@ -294,7 +273,6 @@ const rootRouteChildren: RootRouteChildren = {
   ItHelpDeskRoute: ItHelpDeskRoute,
   NavigationRoute: NavigationRoute,
   ResumeBuilderRoute: ResumeBuilderRoute,
-  ResumeGenRoute: ResumeGenRoute,
   UnimarkRoute: UnimarkRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
@@ -316,7 +294,6 @@ export const routeTree = rootRoute
         "/it-help-desk",
         "/navigation",
         "/resume-builder",
-        "/resume-gen",
         "/unimark",
         "/_auth/login",
         "/_auth/signup"
@@ -342,9 +319,6 @@ export const routeTree = rootRoute
     },
     "/resume-builder": {
       "filePath": "resume-builder.tsx"
-    },
-    "/resume-gen": {
-      "filePath": "resume-gen.tsx"
     },
     "/unimark": {
       "filePath": "unimark.tsx"

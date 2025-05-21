@@ -1,14 +1,15 @@
 import { queryOptions } from "@tanstack/react-query";
 
-export async function getGitHubData(owner: string, repo: string, ext: string): Promise<any> {
+export async function getGitHubData(owner: string, repo: string, ext: string): Promise<any[]> {
   const res = await fetch(`/api/github/${owner}/${repo}/${ext}`);
 
   if (!res.ok) {
     throw new Error(`GitHub API fetch failed with status ${res.status}`);
   }
 
-  const json = await res.json();
-  return json.data;
+  const json = (await res.json()) as { data?: unknown };
+  // Ensure the returned data is always an array
+  return Array.isArray(json.data) ? json.data : [];
 }
 
 export const getGitHubCommitDataQueryOptions = (owner: string, repo: string) =>
