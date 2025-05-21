@@ -7,14 +7,14 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     <div
       ref={ref}
       className={cn(
-        "group relative grid pb-1 transition-all sm:grid-cols-8 sm:gap-8 md:gap-4 lg:hover:!opacity-100 lg:group-hover/list:opacity-50",
+        "group relative grid pb-1 transition-all text-card-foreground sm:grid-cols-8 sm:gap-8 md:gap-4 lg:hover:!opacity-100 lg:group-hover/list:opacity-50",
         className
       )}
       {...props}>
       <div
         ref={ref}
         className={cn(
-          "absolute -inset-x-4 -inset-y-4 z-0 hidden rounded-2xl transition motion-reduce:transition-none lg:-inset-x-6 lg:block lg:group-hover:bg-blue-50/50 lg:group-hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] ",
+          "absolute -inset-x-4 -inset-y-4 z-0 hidden rounded-2xl transition motion-reduce:transition-none lg:-inset-x-6 lg:block lg:group-hover:bg-primary/10 lg:group-hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] ",
           className
         )}
         {...props}></div>
@@ -29,7 +29,7 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
     <div
       ref={ref}
       className={cn(
-        "z-10 mb-2 mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2",
+        "z-10 mb-2 mt-1 text-xs text-muted-foreground font-semibold uppercase tracking-wide sm:col-span-2",
         className
       )}
       {...props}
@@ -62,7 +62,7 @@ const CardImage = React.forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTM
       decoding={decoding}
       data-nimg="1"
       className={cn(
-        "rounded border-2 border-slate-900/10 transition group-hover:border-slate-900/30 sm:order-1 sm:col-span-2 sm:translate-y-1",
+        "rounded border-2 border-foreground/10 transition group-hover:border-slate-900/30 sm:order-1 sm:col-span-2 sm:translate-y-1",
         className
       )}
       style={{ color: "transparent" }}
@@ -76,12 +76,12 @@ const CardTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement> & { href?: string }
 >(({ className, href, children, ...props }, ref) => (
-  <h3 ref={ref} className={cn("font-medium leading-snug text-slate-900", className)} {...props}>
+  <h3 ref={ref} className={cn("font-medium leading-snug text-foreground", className)} {...props}>
     {href ? (
       <a
         href={href}
         className={cn(
-          "inline-flex items-baseline font-medium leading-tight text-slate-900 hover:text-blue-500 focus-visible:text-blue-300 group/link text-base",
+          "inline-flex items-baseline font-medium leading-tight text-foreground hover:text-primary focus-visible:text-primary/30 group/link text-base",
           className
         )}>
         <span
@@ -117,7 +117,11 @@ const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn("mt-2 text-sm leading-normal", className)} {...props} />
+  <p
+    ref={ref}
+    className={cn("mt-2 text-sm leading-normal text-muted-foreground", className)}
+    {...props}
+  />
 ));
 CardDescription.displayName = "CardDescription";
 
@@ -145,7 +149,7 @@ const CardItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     <div ref={ref} className={cn("mr-1.5 mt-2", className)} {...props}>
       <div
         className={cn(
-          "flex items-center rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium leading-5 text-blue-400"
+          "flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium leading-5 text-primary"
         )}>
         {props.children}
       </div>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { useState } from "react";
 
-const themes = ["light", "dark", "system"] as const;
+const themes = ["light", "dark", "system", "baked"] as const;
 
 export function ModeToggle() {
   const { theme, setTheme } = useTheme();
@@ -22,6 +22,7 @@ export function ModeToggle() {
       <Sun className={`h-[1.5rem] w-[1.3rem] ${theme === "light" ? "" : "hidden"}`} />
       <Moon className={`h-5 w-5 ${theme === "dark" ? "" : "hidden"}`} />
       <Laptop className={`h-5 w-5 ${theme === "system" ? "" : "hidden"}`} />
+      <Croissant className={`h-5 w-5 ${theme === "baked" ? "" : "hidden"}`} />
       <span className="sr-only">Toggle theme</span>
     </Button>
   );
