@@ -21,6 +21,8 @@
   "dependencies": {
     "@hono/zod-validator": "^0.5.0",
     "@lucia-auth/adapter-drizzle": "^1.1.0",
+    "@mdx-js/react": "^3.1.0",
+    "@mdx-js/rollup": "^3.1.0",
     "@oslojs/crypto": "^1.0.1",
     "@oslojs/encoding": "^1.1.0",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -55,6 +57,7 @@
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.1.7",
+    "wrangler": "^4.22.0",
     "zod": "3.25.12"
   },
   "devDependencies": {

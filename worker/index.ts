@@ -7,6 +7,7 @@ import { homeRoute } from "./routes/home";
 import { authRoute } from "./routes/auth";
 
 import { HTTPException } from "hono/http-exception";
+import { blogRoute } from "./routes/blog";
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", logger())
@@ -22,6 +23,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/auth", authRoute)
   .route("/github", githubRoute)
   .route("/home", homeRoute)
+  .route("/blog", blogRoute)
   .get("/*", async (c) => {
     const object = await c.env.R2.get(c.req.path.slice(1));
     if (object != null) {

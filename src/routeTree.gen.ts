@@ -16,8 +16,12 @@ import { Route as ResumeBuilderImport } from './routes/resume-builder'
 import { Route as NavigationImport } from './routes/navigation'
 import { Route as ItHelpDeskImport } from './routes/it-help-desk'
 import { Route as HomeImport } from './routes/home'
+import { Route as AboutImport } from './routes/about'
 import { Route as AuthenticatedImport } from './routes/_authenticated'
+import { Route as BlogRouteImport } from './routes/blog/route'
 import { Route as IndexImport } from './routes/index'
+import { Route as Blog2Import } from './routes/blog/2'
+import { Route as Blog1Import } from './routes/blog/1'
 import { Route as AuthenticatedProfileImport } from './routes/_authenticated/profile'
 import { Route as AuthSignupImport } from './routes/_auth/signup'
 import { Route as AuthLoginImport } from './routes/_auth/login'
@@ -54,8 +58,20 @@ const HomeRoute = HomeImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const AboutRoute = AboutImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const AuthenticatedRoute = AuthenticatedImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const BlogRouteRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -63,6 +79,18 @@ const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
+} as any)
+
+const Blog2Route = Blog2Import.update({
+  id: '/2',
+  path: '/2',
+  getParentRoute: () => BlogRouteRoute,
+} as any)
+
+const Blog1Route = Blog1Import.update({
+  id: '/1',
+  path: '/1',
+  getParentRoute: () => BlogRouteRoute,
 } as any)
 
 const AuthenticatedProfileRoute = AuthenticatedProfileImport.update({
@@ -94,11 +122,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRoute
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof AuthenticatedImport
+      parentRoute: typeof rootRoute
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
     '/home': {
@@ -157,10 +199,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileImport
       parentRoute: typeof AuthenticatedImport
     }
+    '/blog/1': {
+      id: '/blog/1'
+      path: '/1'
+      fullPath: '/blog/1'
+      preLoaderRoute: typeof Blog1Import
+      parentRoute: typeof BlogRouteImport
+    }
+    '/blog/2': {
+      id: '/blog/2'
+      path: '/2'
+      fullPath: '/blog/2'
+      preLoaderRoute: typeof Blog2Import
+      parentRoute: typeof BlogRouteImport
+    }
   }
 }
 
 // Create and export the route tree
+
+interface BlogRouteRouteChildren {
+  Blog1Route: typeof Blog1Route
+  Blog2Route: typeof Blog2Route
+}
+
+const BlogRouteRouteChildren: BlogRouteRouteChildren = {
+  Blog1Route: Blog1Route,
+  Blog2Route: Blog2Route,
+}
+
+const BlogRouteRouteWithChildren = BlogRouteRoute._addFileChildren(
+  BlogRouteRouteChildren,
+)
 
 interface AuthenticatedRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
@@ -176,7 +246,9 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
   '': typeof AuthenticatedRouteWithChildren
+  '/about': typeof AboutRoute
   '/home': typeof HomeRoute
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
@@ -185,11 +257,15 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/blog/1': typeof Blog1Route
+  '/blog/2': typeof Blog2Route
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
   '': typeof AuthenticatedRouteWithChildren
+  '/about': typeof AboutRoute
   '/home': typeof HomeRoute
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
@@ -198,12 +274,16 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/blog/1': typeof Blog1Route
+  '/blog/2': typeof Blog2Route
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/about': typeof AboutRoute
   '/home': typeof HomeRoute
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
@@ -212,13 +292,17 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/signup': typeof AuthSignupRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/blog/1': typeof Blog1Route
+  '/blog/2': typeof Blog2Route
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/blog'
     | ''
+    | '/about'
     | '/home'
     | '/it-help-desk'
     | '/navigation'
@@ -227,10 +311,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/profile'
+    | '/blog/1'
+    | '/blog/2'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/blog'
     | ''
+    | '/about'
     | '/home'
     | '/it-help-desk'
     | '/navigation'
@@ -239,10 +327,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/profile'
+    | '/blog/1'
+    | '/blog/2'
   id:
     | '__root__'
     | '/'
+    | '/blog'
     | '/_authenticated'
+    | '/about'
     | '/home'
     | '/it-help-desk'
     | '/navigation'
@@ -251,12 +343,16 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_auth/signup'
     | '/_authenticated/profile'
+    | '/blog/1'
+    | '/blog/2'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BlogRouteRoute: typeof BlogRouteRouteWithChildren
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AboutRoute: typeof AboutRoute
   HomeRoute: typeof HomeRoute
   ItHelpDeskRoute: typeof ItHelpDeskRoute
   NavigationRoute: typeof NavigationRoute
@@ -268,7 +364,9 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BlogRouteRoute: BlogRouteRouteWithChildren,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AboutRoute: AboutRoute,
   HomeRoute: HomeRoute,
   ItHelpDeskRoute: ItHelpDeskRoute,
   NavigationRoute: NavigationRoute,
@@ -289,7 +387,9 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/blog",
         "/_authenticated",
+        "/about",
         "/home",
         "/it-help-desk",
         "/navigation",
@@ -302,11 +402,21 @@ export const routeTree = rootRoute
     "/": {
       "filePath": "index.tsx"
     },
+    "/blog": {
+      "filePath": "blog/route.tsx",
+      "children": [
+        "/blog/1",
+        "/blog/2"
+      ]
+    },
     "/_authenticated": {
       "filePath": "_authenticated.tsx",
       "children": [
         "/_authenticated/profile"
       ]
+    },
+    "/about": {
+      "filePath": "about.tsx"
     },
     "/home": {
       "filePath": "home.tsx"
@@ -332,6 +442,14 @@ export const routeTree = rootRoute
     "/_authenticated/profile": {
       "filePath": "_authenticated/profile.tsx",
       "parent": "/_authenticated"
+    },
+    "/blog/1": {
+      "filePath": "blog/1.tsx",
+      "parent": "/blog"
+    },
+    "/blog/2": {
+      "filePath": "blog/2.tsx",
+      "parent": "/blog"
     }
   }
 }
