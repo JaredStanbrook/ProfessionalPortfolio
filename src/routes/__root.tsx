@@ -18,18 +18,19 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function Root() {
   return (
-    <div className="bg-background leading-relaxed text-foreground antialiased">
-      <div className="fixed flex flex-row gap-2 top-2.5 right-4 lg:w-full lg:flex-row lg:justify-between lg:right-0 lg:px-5 lg:top-4 z-50">
-        <Link to={"/navigation"} className="lg:order-first">
+    <div className="bg-background leading-relaxed text-foreground antialiased font-sans">
+      {/* Add pointer-events-none to the nav container, and pointer-events-auto to interactive children */}
+      <div className="fixed flex flex-row gap-2 top-2.5 right-4 lg:w-full lg:flex-row lg:justify-between lg:right-0 lg:px-5 lg:top-4 z-50 pointer-events-none">
+        <Link to={"/navigation"} className="lg:order-first pointer-events-auto">
           <Button variant="ghost" size="icon">
             <Menu />
           </Button>
         </Link>
-        <div className="lg:order-last">
+        <div className="lg:order-last pointer-events-auto">
           <ModeToggle />
         </div>
       </div>
-      <div className="mx-auto min-h-screen max-w-screen-xl px-6 py-12 font-sans md:px-12 md:py-20 lg:px-24 lg:py-0">
+      <div className="mx-auto min-h-screen max-w-screen-xl px-6 py-12 md:px-12 md:py-20 lg:px-24 lg:py-0">
         <Outlet />
         <TanStackRouterDevtools />
         <ReactQueryDevtools initialIsOpen={false} />
