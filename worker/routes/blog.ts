@@ -1,8 +1,4 @@
 import { Hono } from "hono";
-import { renderToString } from "react-dom/server";
-import { createElement } from "react";
-import { compile, evaluate, run } from "@mdx-js/mdx";
-import * as runtime from "react/jsx-runtime";
 import { dbMiddleware } from "../db";
 
 interface BlogMetadata {
@@ -10,10 +6,19 @@ interface BlogMetadata {
   title: string;
   readTime: number;
   subject: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// Example D1 schema for blog metadata
-// CREATE TABLE blog_metadata (filename TEXT PRIMARY KEY, title TEXT, readTime INTEGER, subject TEXT);
+// D1 schema for blog metadata with timestamps
+// CREATE TABLE blog_metadata (
+//   filename TEXT PRIMARY KEY,
+//   title TEXT NOT NULL,
+//   readTime INTEGER NOT NULL,
+//   subject TEXT NOT NULL,
+//   createdAt TEXT NOT NULL,
+//   updatedAt TEXT NOT NULL
+// );
 
 export const blogRoute = new Hono<{ Bindings: Env }>()
   .use("*", dbMiddleware)
@@ -22,7 +27,7 @@ export const blogRoute = new Hono<{ Bindings: Env }>()
   .get("/", async (c) => {
     try {
       const { results } = await c.env.DB.prepare(
-        "SELECT filename, title, readTime, subject FROM blog_metadata ORDER BY filename"
+        "SELECT filename, title, readTime, subject, createdAt, updatedAt FROM blog_metadata ORDER BY createdAt DESC"
       ).all();
       return c.json({ blogs: results });
     } catch (error) {
@@ -31,31 +36,41 @@ export const blogRoute = new Hono<{ Bindings: Env }>()
     }
   })
 
-  // GET test route for local 1.mdx file (server-rendered)
-  .get("/test", async (c) => {
-    const code = String(await compile("# hi", { outputFormat: "function-body" }));
-    return c.json(code);
-  })
-
-  // GET a single blog MDX file (server-rendered)
+  // GET a single blog MDX file (raw content + metadata)
   .get("/:filename{.+\\.mdx}", async (c) => {
     const filename = c.req.param("filename");
-    const isLocal = c.req.query("local") === "true";
-
-    let fileContent: string;
 
     try {
-      const object = await c.env.R2.get(`blogs/${filename}`);
+      const object = await c.env.BLOG.get(filename);
       if (!object) {
         return c.json({ error: "File not found" }, 404);
       }
-      fileContent = await object.text();
+      const fileContent = await object.text();
 
-      const result = await renderMDXContent(fileContent);
-      return c.json(result);
+      // Parse frontmatter for metadata
+      const metadata = parseFrontMatter(fileContent);
+
+      // Get timestamps from D1
+      const dbResult = await c.env.DB.prepare(
+        "SELECT createdAt, updatedAt FROM blog_metadata WHERE filename = ?"
+      )
+        .bind(filename)
+        .first();
+
+      // Remove frontmatter and return raw content
+      const content = fileContent.replace(/^---\n[\s\S]+?\n---\n/, "");
+
+      return c.json({
+        content,
+        metadata: {
+          ...metadata,
+          createdAt: dbResult?.createdAt || new Date().toISOString(),
+          updatedAt: dbResult?.updatedAt || new Date().toISOString(),
+        },
+      });
     } catch (err) {
-      console.error("Error rendering blog:", err);
-      return c.json({ error: "Failed to render blog" }, 500);
+      console.error("Error fetching blog:", err);
+      return c.json({ error: "Failed to fetch blog" }, 500);
     }
   })
 
@@ -65,22 +80,34 @@ export const blogRoute = new Hono<{ Bindings: Env }>()
     const body = await c.req.text();
 
     try {
+      // Check if blog already exists to determine if this is a create or update
+      const existingBlog = await c.env.DB.prepare(
+        "SELECT filename, createdAt FROM blog_metadata WHERE filename = ?"
+      )
+        .bind(filename)
+        .first();
+
+      const now = new Date().toISOString();
+      const createdAt = existingBlog ? existingBlog.createdAt : now;
+      const updatedAt = now;
+
       // Save file to R2
-      await c.env.R2.put(`blogs/${filename}`, body);
+      await c.env.BLOG.put(filename, body);
 
       // Parse frontmatter for metadata
       const metadata = parseFrontMatter(body);
 
-      // Upsert metadata into D1
+      // Upsert metadata into D1 with timestamps
       await c.env.DB.prepare(
-        `INSERT INTO blog_metadata (filename, title, readTime, subject)
-         VALUES (?, ?, ?, ?)
+        `INSERT INTO blog_metadata (filename, title, readTime, subject, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT(filename) DO UPDATE SET 
          title=excluded.title, 
          readTime=excluded.readTime, 
-         subject=excluded.subject`
+         subject=excluded.subject,
+         updatedAt=excluded.updatedAt`
       )
-        .bind(filename, metadata.title, metadata.readTime, metadata.subject)
+        .bind(filename, metadata.title, metadata.readTime, metadata.subject, createdAt, updatedAt)
         .run();
 
       return c.json({
@@ -90,6 +117,8 @@ export const blogRoute = new Hono<{ Bindings: Env }>()
           title: metadata.title,
           readTime: metadata.readTime,
           subject: metadata.subject,
+          createdAt,
+          updatedAt,
         },
       });
     } catch (error) {
@@ -104,7 +133,7 @@ export const blogRoute = new Hono<{ Bindings: Env }>()
 
     try {
       // Delete from R2
-      await c.env.R2.delete(`blogs/${filename}`);
+      await c.env.BLOG.delete(filename);
 
       // Delete metadata from D1
       await c.env.DB.prepare("DELETE FROM blog_metadata WHERE filename = ?").bind(filename).run();
@@ -135,48 +164,4 @@ function parseFrontMatter(content: string): { title: string; readTime: number; s
   }
 
   return { title, readTime, subject };
-}
-
-// Efficient MDX server-side rendering function
-async function renderMDXContent(content: string): Promise<{
-  html: string;
-  metadata: { title: string; readTime: number; subject: string };
-}> {
-  try {
-    // Parse frontmatter
-    const metadata = parseFrontMatter(content);
-
-    // Remove frontmatter for compilation
-    const contentWithoutFrontmatter = content.replace(/^---\n[\s\S]+?\n---\n/, "");
-
-    // Compile MDX to JavaScript
-    const compiled = await compile(contentWithoutFrontmatter, {
-      format: "mdx",
-      development: false,
-      outputFormat: "function-body",
-      // Add any custom plugins here if needed
-      remarkPlugins: [],
-      rehypePlugins: [],
-    });
-
-    // Execute the compiled MDX
-    const { default: MDXContent } = await run(compiled, {
-      ...runtime,
-      baseUrl: import.meta.url,
-    });
-
-    // Create React element from MDX
-    const element = createElement(MDXContent);
-
-    // Render to HTML string (content only, no wrapper)
-    const html = renderToString(element);
-
-    return {
-      html,
-      metadata,
-    };
-  } catch (error) {
-    console.error("Error rendering MDX:", error);
-    throw new Error(`Failed to render MDX: ${error.message}`);
-  }
 }

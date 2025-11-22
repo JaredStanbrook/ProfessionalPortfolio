@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod/v4";
+import { z, email } from "zod";
 import { generateId, Scrypt } from "lucia";
 
 import { eq, desc } from "drizzle-orm";
@@ -58,7 +58,7 @@ export const authRoute = new Hono<{ Bindings: Env }>()
     zValidator(
       "form",
       z.object({
-        email: z.string().email(),
+        email: email(),
         password: z.string().min(1),
       })
     ),
@@ -105,7 +105,7 @@ export const authRoute = new Hono<{ Bindings: Env }>()
       return c.json({ user });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return c.json({ error: "Invalid data", details: error.errors }, 401);
+        return c.json({ error: "Invalid data", details: error.issues }, 401);
       } else {
         return c.json({ error: "I don't know you" }, 401);
       }

@@ -1,6 +1,6 @@
-import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { HighlightCard } from "@/components/ui/highlight-card";
 
 export const Route = createFileRoute("/")({
@@ -18,6 +18,15 @@ interface CursorState {
   isAttracted: boolean;
 }
 
+interface BlogMetadata {
+  filename: string;
+  title: string;
+  readTime: number;
+  subject: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 function Homepage() {
   const navigate = useNavigate();
   const [mousePos, setMousePos] = useState<MousePosition>({ x: 0, y: 0 });
@@ -27,15 +36,36 @@ function Homepage() {
     scale: 1,
     isAttracted: false,
   });
+  const [blogs, setBlogs] = useState<BlogMetadata[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const titleRef = useRef<HTMLSpanElement>(null);
   const animationRef = useRef<number | null>(null);
 
   // Constants
-  const CURSOR_SCALE_MULTIPLIER = 35; // Change this value to adjust the max scale effect
-  const MAGNETIC_RADIUS = 400; // 150
-  const MAGNETIC_STRENGTH = 1; // 0.3
-  const MAX_DISTANCE_RADIUS = 150; // 300
+  const CURSOR_SCALE_MULTIPLIER = 35;
+  const MAGNETIC_RADIUS = 400;
+  const MAGNETIC_STRENGTH = 1;
+  const MAX_DISTANCE_RADIUS = 150;
+
+  // Fetch blog metadata on mount
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const response = await fetch("/api/blog");
+        if (response.ok) {
+          const data = await response.json();
+          setBlogs(data.blogs || []);
+        }
+      } catch (error) {
+        console.error("Error fetching blogs:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBlogs();
+  }, []);
 
   const getDistance = useCallback((x1: number, y1: number, x2: number, y2: number): number => {
     return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
@@ -51,12 +81,10 @@ function Homepage() {
       const rect = getTitleRect();
       if (!rect) return { position: mousePosition, scale: 1, isAttracted: false };
 
-      // Calculate distance from mouse to the closest edge of the title's bounding box
       const dx = Math.max(rect.left - mousePosition.x, 0, mousePosition.x - rect.right);
       const dy = Math.max(rect.top - mousePosition.y, 0, mousePosition.y - rect.bottom);
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // If inside the rect, distance is 0
       const inside =
         mousePosition.x >= rect.left &&
         mousePosition.x <= rect.right &&
@@ -65,7 +93,6 @@ function Homepage() {
 
       let scale = 1;
       if (inside || distance <= MAX_DISTANCE_RADIUS) {
-        // Invert the scale calculation - closer = larger
         const proximityProgress = 1 - Math.min(distance / MAX_DISTANCE_RADIUS, 1);
         scale = 1 + proximityProgress * CURSOR_SCALE_MULTIPLIER;
       }
@@ -73,16 +100,12 @@ function Homepage() {
       let position = mousePosition;
       let isAttracted = false;
 
-      // Magnetic pull if within radius of the rect (from edge, not just center)
       if ((inside || distance < MAGNETIC_RADIUS) && distance > 0) {
-        // Find the closest point on the rect to the mouse
         const closestX = Math.max(rect.left, Math.min(mousePosition.x, rect.right));
         const closestY = Math.max(rect.top, Math.min(mousePosition.y, rect.bottom));
-        // Calculate magnetic force
         const force = 1 - distance / MAGNETIC_RADIUS;
         const pullStrength = force * MAGNETIC_STRENGTH;
 
-        // Apply magnetic pull
         const pullX = (closestX - mousePosition.x) * pullStrength;
         const pullY = (closestY - mousePosition.y) * pullStrength;
 
@@ -101,7 +124,6 @@ function Homepage() {
     [getTitleRect]
   );
 
-  // Smooth mouse move handler
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent): void => {
       setMousePos({ x: e.clientX, y: e.clientY });
@@ -114,16 +136,14 @@ function Homepage() {
     };
   }, []);
 
-  // Smooth animation loop with interpolation
   useEffect(() => {
     let targetCursorState: CursorState = cursorState;
 
     const animate = (): void => {
       targetCursorState = calculateCursorState(mousePos);
 
-      // Smooth interpolation for position and scale
       setCursorState((prevState) => {
-        const lerpFactor = 0.15; // Smoothing factor (0-1, lower = smoother)
+        const lerpFactor = 0.15;
 
         return {
           position: {
@@ -162,6 +182,21 @@ function Homepage() {
     }, 200);
   }, []);
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const handleBlogClick = (filename: string) => {
+    // Remove .mdx extension for URL
+    const slug = filename.replace(".mdx", "");
+    navigate({ to: "/blog/$slug", params: { slug } });
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-muted-foreground">
       {/* Custom Cursor */}
@@ -191,7 +226,7 @@ function Homepage() {
             className={`
               text-2xl md:text-4xl font-extrabold tracking-tight text-foreground cursor-pointer
               transition-all duration-300 select-none block whitespace-nowrap overflow-visible
-              ${window.innerWidth < 768 ? "scroll-text" : ""}
+              ${typeof window !== "undefined" && window.innerWidth < 768 ? "scroll-text" : ""}
             `}
             role="button"
             tabIndex={0}>
@@ -205,9 +240,7 @@ function Homepage() {
         <hr className="w-full border-t-2 border-foreground opacity-30 self-center" />
       </section>
 
-      {/* Top Section: Two divs, each on its own row, each half width */}
       <section className="w-full flex flex-col items-center pt-12 gap-8">
-        {/* Row 1: Header/Intro */}
         <div className="flex flex-col justify-center w-full md:w-1/2 self-start">
           <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-4">Welcome</h1>
 
@@ -218,7 +251,6 @@ function Homepage() {
           </p>
         </div>
 
-        {/* Row 2: Blog Section Title + Search */}
         <div className="flex flex-col justify-center w-full md:w-1/2 self-end">
           <p className="text-lg md:text-xl text-muted-foreground max-w-xl text-justify">
             Dive into my journey as I explore, experiment, and grow. Here you'll find hands-on labs,
@@ -234,49 +266,39 @@ function Homepage() {
           <hr className="w-full border-t-2 border-foreground opacity-30 self-center" />
         </div>
 
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-3 auto-rows-fr">
-          <HighlightCard
-            size="small"
-            onClick={() => navigate({ to: "/blog/1" })}
-            tabIndex={0}
-            role="button">
-            <CardContent className="p-4 flex flex-col justify-between h-full">
-              <div>
-                <span className="inline-block text-xs mb-2">
-                  <span className="py-1 px-2 rounded-full bg-foreground text-background font-semibold">
-                    Reflection
-                  </span>
-                  <span className="ml-1 text-muted-foreground align-middle">· 20 min read</span>
-                </span>
-                <h2 className="text-lg font-semibold mb-2">
-                  The Spark — Why I Chose Cybersecurity
-                </h2>
-              </div>
-              <div className="text-sm mt-4">Jared Stanbrook · June 2025</div>
-            </CardContent>
-          </HighlightCard>
-
-          <HighlightCard
-            size="big"
-            onClick={() => navigate({ to: "/blog/2" })}
-            tabIndex={4}
-            role="button">
-            <CardContent className="p-4 flex flex-col justify-between h-full">
-              <div>
-                <span className="inline-block text-xs mb-2">
-                  <span className="py-1 px-2 rounded-full bg-foreground text-background font-semibold">
-                    Reflection
-                  </span>
-                  <span className="ml-1 text-muted-foreground align-middle">· 20 min read</span>
-                </span>
-                <h2 className="text-lg font-semibold mb-2">
-                  The Team I Want — The Kind of Cybersecurity Team I Hope to Be a Part Of
-                </h2>
-              </div>
-              <div className="text-sm mt-4">Jared Stanbrook · June 2025</div>
-            </CardContent>
-          </HighlightCard>
-        </div>
+        {isLoading ? (
+          <div className="text-center py-12 text-muted-foreground">Loading blogs...</div>
+        ) : blogs.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            No blogs found. Create your first one!
+          </div>
+        ) : (
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-3 auto-rows-fr">
+            {blogs.map((blog, index) => (
+              <HighlightCard
+                key={blog.filename}
+                size={index === 1 ? "big" : "small"}
+                onClick={() => handleBlogClick(blog.filename)}
+                tabIndex={index}
+                role="button">
+                <CardContent className="p-4 flex flex-col justify-between h-full">
+                  <div>
+                    <span className="inline-block text-xs mb-2">
+                      <span className="py-1 px-2 rounded-full bg-foreground text-background font-semibold">
+                        {blog.subject}
+                      </span>
+                      <span className="ml-1 text-muted-foreground align-middle">
+                        · {blog.readTime} min read
+                      </span>
+                    </span>
+                    <h2 className="text-lg font-semibold mb-2">{blog.title}</h2>
+                  </div>
+                  <div className="text-sm mt-4">Jared Stanbrook · {formatDate(blog.createdAt)}</div>
+                </CardContent>
+              </HighlightCard>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );

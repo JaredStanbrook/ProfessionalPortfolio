@@ -39,30 +39,18 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 CardHeader.displayName = "CardHeader";
 
 const CardImage = React.forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTMLImageElement>>(
-  (
-    {
-      className,
-      src,
-      alt,
-      loading = "lazy",
-      width = 200,
-      height = 48,
-      decoding = "async",
-      ...props
-    },
-    ref
-  ) => (
+  ({ className, src, alt, loading = "lazy", decoding = "async", ...props }, ref) => (
     <img
       ref={ref}
       src={src}
       alt={alt}
       loading={loading}
-      width={width}
-      height={height}
       decoding={decoding}
       data-nimg="1"
       className={cn(
-        "rounded:lg border-2 border-foreground/10 transition group-hover:border-slate-900/30 sm:order-1 sm:col-span-2 sm:translate-y-1",
+        "rounded-lg border-2 border-foreground/10 transition group-hover:border-slate-900/30",
+        "w-full h-auto object-contain",
+        "sm:order-1 sm:col-span-3 my-5 sm:my-0",
         className
       )}
       style={{ color: "transparent" }}
@@ -127,7 +115,7 @@ CardDescription.displayName = "CardDescription";
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("z-10 sm:col-span-6", className)} {...props} />
+    <div ref={ref} className={cn("z-10 sm:col-span-5", className)} {...props} />
   )
 );
 CardContent.displayName = "CardContent";

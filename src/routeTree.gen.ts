@@ -8,224 +8,375 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnimarkRouteImport } from './routes/unimark'
+import { Route as TradieRouteImport } from './routes/tradie'
+import { Route as ResumeBuilderRouteImport } from './routes/resume-builder'
+import { Route as NavigationRouteImport } from './routes/navigation'
+import { Route as ItHelpDeskRouteImport } from './routes/it-help-desk'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as BlogRouteRouteImport } from './routes/blog/route'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as BlogEditorRouteImport } from './routes/blog/editor'
+import { Route as Blog2RouteImport } from './routes/blog/2'
+import { Route as Blog1RouteImport } from './routes/blog/1'
+import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as UnimarkImport } from './routes/unimark'
-import { Route as ResumeBuilderImport } from './routes/resume-builder'
-import { Route as NavigationImport } from './routes/navigation'
-import { Route as ItHelpDeskImport } from './routes/it-help-desk'
-import { Route as HomeImport } from './routes/home'
-import { Route as AboutImport } from './routes/about'
-import { Route as AuthenticatedImport } from './routes/_authenticated'
-import { Route as BlogRouteImport } from './routes/blog/route'
-import { Route as IndexImport } from './routes/index'
-import { Route as Blog2Import } from './routes/blog/2'
-import { Route as Blog1Import } from './routes/blog/1'
-import { Route as AuthenticatedProfileImport } from './routes/_authenticated/profile'
-import { Route as AuthSignupImport } from './routes/_auth/signup'
-import { Route as AuthLoginImport } from './routes/_auth/login'
-
-// Create/Update Routes
-
-const UnimarkRoute = UnimarkImport.update({
+const UnimarkRoute = UnimarkRouteImport.update({
   id: '/unimark',
   path: '/unimark',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ResumeBuilderRoute = ResumeBuilderImport.update({
+const TradieRoute = TradieRouteImport.update({
+  id: '/tradie',
+  path: '/tradie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResumeBuilderRoute = ResumeBuilderRouteImport.update({
   id: '/resume-builder',
   path: '/resume-builder',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const NavigationRoute = NavigationImport.update({
+const NavigationRoute = NavigationRouteImport.update({
   id: '/navigation',
   path: '/navigation',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ItHelpDeskRoute = ItHelpDeskImport.update({
+const ItHelpDeskRoute = ItHelpDeskRouteImport.update({
   id: '/it-help-desk',
   path: '/it-help-desk',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const HomeRoute = HomeImport.update({
+const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AboutRoute = AboutImport.update({
+const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AuthenticatedRoute = AuthenticatedImport.update({
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const BlogRouteRoute = BlogRouteImport.update({
+const BlogRouteRoute = BlogRouteRouteImport.update({
   id: '/blog',
   path: '/blog',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const Blog2Route = Blog2Import.update({
+const BlogEditorRoute = BlogEditorRouteImport.update({
+  id: '/editor',
+  path: '/editor',
+  getParentRoute: () => BlogRouteRoute,
+} as any)
+const Blog2Route = Blog2RouteImport.update({
   id: '/2',
   path: '/2',
   getParentRoute: () => BlogRouteRoute,
 } as any)
-
-const Blog1Route = Blog1Import.update({
+const Blog1Route = Blog1RouteImport.update({
   id: '/1',
   path: '/1',
   getParentRoute: () => BlogRouteRoute,
 } as any)
-
-const AuthenticatedProfileRoute = AuthenticatedProfileImport.update({
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRouteRoute,
+} as any)
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-
-const AuthSignupRoute = AuthSignupImport.update({
+const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/_auth/signup',
   path: '/signup',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AuthLoginRoute = AuthLoginImport.update({
+const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/_auth/login',
   path: '/login',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
+  '/about': typeof AboutRoute
+  '/home': typeof HomeRoute
+  '/it-help-desk': typeof ItHelpDeskRoute
+  '/navigation': typeof NavigationRoute
+  '/resume-builder': typeof ResumeBuilderRoute
+  '/tradie': typeof TradieRoute
+  '/unimark': typeof UnimarkRoute
+  '/login': typeof AuthLoginRoute
+  '/signup': typeof AuthSignupRoute
+  '/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/1': typeof Blog1Route
+  '/blog/2': typeof Blog2Route
+  '/blog/editor': typeof BlogEditorRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
+  '/about': typeof AboutRoute
+  '/home': typeof HomeRoute
+  '/it-help-desk': typeof ItHelpDeskRoute
+  '/navigation': typeof NavigationRoute
+  '/resume-builder': typeof ResumeBuilderRoute
+  '/tradie': typeof TradieRoute
+  '/unimark': typeof UnimarkRoute
+  '/login': typeof AuthLoginRoute
+  '/signup': typeof AuthSignupRoute
+  '/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/1': typeof Blog1Route
+  '/blog/2': typeof Blog2Route
+  '/blog/editor': typeof BlogEditorRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/about': typeof AboutRoute
+  '/home': typeof HomeRoute
+  '/it-help-desk': typeof ItHelpDeskRoute
+  '/navigation': typeof NavigationRoute
+  '/resume-builder': typeof ResumeBuilderRoute
+  '/tradie': typeof TradieRoute
+  '/unimark': typeof UnimarkRoute
+  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/signup': typeof AuthSignupRoute
+  '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/1': typeof Blog1Route
+  '/blog/2': typeof Blog2Route
+  '/blog/editor': typeof BlogEditorRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/blog'
+    | '/about'
+    | '/home'
+    | '/it-help-desk'
+    | '/navigation'
+    | '/resume-builder'
+    | '/tradie'
+    | '/unimark'
+    | '/login'
+    | '/signup'
+    | '/profile'
+    | '/blog/$slug'
+    | '/blog/1'
+    | '/blog/2'
+    | '/blog/editor'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/blog'
+    | '/about'
+    | '/home'
+    | '/it-help-desk'
+    | '/navigation'
+    | '/resume-builder'
+    | '/tradie'
+    | '/unimark'
+    | '/login'
+    | '/signup'
+    | '/profile'
+    | '/blog/$slug'
+    | '/blog/1'
+    | '/blog/2'
+    | '/blog/editor'
+  id:
+    | '__root__'
+    | '/'
+    | '/blog'
+    | '/_authenticated'
+    | '/about'
+    | '/home'
+    | '/it-help-desk'
+    | '/navigation'
+    | '/resume-builder'
+    | '/tradie'
+    | '/unimark'
+    | '/_auth/login'
+    | '/_auth/signup'
+    | '/_authenticated/profile'
+    | '/blog/$slug'
+    | '/blog/1'
+    | '/blog/2'
+    | '/blog/editor'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  BlogRouteRoute: typeof BlogRouteRouteWithChildren
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AboutRoute: typeof AboutRoute
+  HomeRoute: typeof HomeRoute
+  ItHelpDeskRoute: typeof ItHelpDeskRoute
+  NavigationRoute: typeof NavigationRoute
+  ResumeBuilderRoute: typeof ResumeBuilderRoute
+  TradieRoute: typeof TradieRoute
+  UnimarkRoute: typeof UnimarkRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
+    '/unimark': {
+      id: '/unimark'
+      path: '/unimark'
+      fullPath: '/unimark'
+      preLoaderRoute: typeof UnimarkRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/blog': {
-      id: '/blog'
-      path: '/blog'
-      fullPath: '/blog'
-      preLoaderRoute: typeof BlogRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AuthenticatedImport
-      parentRoute: typeof rootRoute
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutImport
-      parentRoute: typeof rootRoute
-    }
-    '/home': {
-      id: '/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof HomeImport
-      parentRoute: typeof rootRoute
-    }
-    '/it-help-desk': {
-      id: '/it-help-desk'
-      path: '/it-help-desk'
-      fullPath: '/it-help-desk'
-      preLoaderRoute: typeof ItHelpDeskImport
-      parentRoute: typeof rootRoute
-    }
-    '/navigation': {
-      id: '/navigation'
-      path: '/navigation'
-      fullPath: '/navigation'
-      preLoaderRoute: typeof NavigationImport
-      parentRoute: typeof rootRoute
+    '/tradie': {
+      id: '/tradie'
+      path: '/tradie'
+      fullPath: '/tradie'
+      preLoaderRoute: typeof TradieRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/resume-builder': {
       id: '/resume-builder'
       path: '/resume-builder'
       fullPath: '/resume-builder'
-      preLoaderRoute: typeof ResumeBuilderImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof ResumeBuilderRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/unimark': {
-      id: '/unimark'
-      path: '/unimark'
-      fullPath: '/unimark'
-      preLoaderRoute: typeof UnimarkImport
-      parentRoute: typeof rootRoute
+    '/navigation': {
+      id: '/navigation'
+      path: '/navigation'
+      fullPath: '/navigation'
+      preLoaderRoute: typeof NavigationRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_auth/login': {
-      id: '/_auth/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof AuthLoginImport
-      parentRoute: typeof rootRoute
+    '/it-help-desk': {
+      id: '/it-help-desk'
+      path: '/it-help-desk'
+      fullPath: '/it-help-desk'
+      preLoaderRoute: typeof ItHelpDeskRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_auth/signup': {
-      id: '/_auth/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof AuthSignupImport
-      parentRoute: typeof rootRoute
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/profile': {
-      id: '/_authenticated/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthenticatedProfileImport
-      parentRoute: typeof AuthenticatedImport
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/blog/1': {
-      id: '/blog/1'
-      path: '/1'
-      fullPath: '/blog/1'
-      preLoaderRoute: typeof Blog1Import
-      parentRoute: typeof BlogRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/editor': {
+      id: '/blog/editor'
+      path: '/editor'
+      fullPath: '/blog/editor'
+      preLoaderRoute: typeof BlogEditorRouteImport
+      parentRoute: typeof BlogRouteRoute
     }
     '/blog/2': {
       id: '/blog/2'
       path: '/2'
       fullPath: '/blog/2'
-      preLoaderRoute: typeof Blog2Import
-      parentRoute: typeof BlogRouteImport
+      preLoaderRoute: typeof Blog2RouteImport
+      parentRoute: typeof BlogRouteRoute
+    }
+    '/blog/1': {
+      id: '/blog/1'
+      path: '/1'
+      fullPath: '/blog/1'
+      preLoaderRoute: typeof Blog1RouteImport
+      parentRoute: typeof BlogRouteRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRouteRoute
+    }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_auth/signup': {
+      id: '/_auth/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-// Create and export the route tree
-
 interface BlogRouteRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
   Blog1Route: typeof Blog1Route
   Blog2Route: typeof Blog2Route
+  BlogEditorRoute: typeof BlogEditorRoute
 }
 
 const BlogRouteRouteChildren: BlogRouteRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
   Blog1Route: Blog1Route,
   Blog2Route: Blog2Route,
+  BlogEditorRoute: BlogEditorRoute,
 }
 
 const BlogRouteRouteWithChildren = BlogRouteRoute._addFileChildren(
@@ -244,124 +395,6 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/blog': typeof BlogRouteRouteWithChildren
-  '': typeof AuthenticatedRouteWithChildren
-  '/about': typeof AboutRoute
-  '/home': typeof HomeRoute
-  '/it-help-desk': typeof ItHelpDeskRoute
-  '/navigation': typeof NavigationRoute
-  '/resume-builder': typeof ResumeBuilderRoute
-  '/unimark': typeof UnimarkRoute
-  '/login': typeof AuthLoginRoute
-  '/signup': typeof AuthSignupRoute
-  '/profile': typeof AuthenticatedProfileRoute
-  '/blog/1': typeof Blog1Route
-  '/blog/2': typeof Blog2Route
-}
-
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/blog': typeof BlogRouteRouteWithChildren
-  '': typeof AuthenticatedRouteWithChildren
-  '/about': typeof AboutRoute
-  '/home': typeof HomeRoute
-  '/it-help-desk': typeof ItHelpDeskRoute
-  '/navigation': typeof NavigationRoute
-  '/resume-builder': typeof ResumeBuilderRoute
-  '/unimark': typeof UnimarkRoute
-  '/login': typeof AuthLoginRoute
-  '/signup': typeof AuthSignupRoute
-  '/profile': typeof AuthenticatedProfileRoute
-  '/blog/1': typeof Blog1Route
-  '/blog/2': typeof Blog2Route
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/blog': typeof BlogRouteRouteWithChildren
-  '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/about': typeof AboutRoute
-  '/home': typeof HomeRoute
-  '/it-help-desk': typeof ItHelpDeskRoute
-  '/navigation': typeof NavigationRoute
-  '/resume-builder': typeof ResumeBuilderRoute
-  '/unimark': typeof UnimarkRoute
-  '/_auth/login': typeof AuthLoginRoute
-  '/_auth/signup': typeof AuthSignupRoute
-  '/_authenticated/profile': typeof AuthenticatedProfileRoute
-  '/blog/1': typeof Blog1Route
-  '/blog/2': typeof Blog2Route
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/blog'
-    | ''
-    | '/about'
-    | '/home'
-    | '/it-help-desk'
-    | '/navigation'
-    | '/resume-builder'
-    | '/unimark'
-    | '/login'
-    | '/signup'
-    | '/profile'
-    | '/blog/1'
-    | '/blog/2'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/blog'
-    | ''
-    | '/about'
-    | '/home'
-    | '/it-help-desk'
-    | '/navigation'
-    | '/resume-builder'
-    | '/unimark'
-    | '/login'
-    | '/signup'
-    | '/profile'
-    | '/blog/1'
-    | '/blog/2'
-  id:
-    | '__root__'
-    | '/'
-    | '/blog'
-    | '/_authenticated'
-    | '/about'
-    | '/home'
-    | '/it-help-desk'
-    | '/navigation'
-    | '/resume-builder'
-    | '/unimark'
-    | '/_auth/login'
-    | '/_auth/signup'
-    | '/_authenticated/profile'
-    | '/blog/1'
-    | '/blog/2'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  BlogRouteRoute: typeof BlogRouteRouteWithChildren
-  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
-  AboutRoute: typeof AboutRoute
-  HomeRoute: typeof HomeRoute
-  ItHelpDeskRoute: typeof ItHelpDeskRoute
-  NavigationRoute: typeof NavigationRoute
-  ResumeBuilderRoute: typeof ResumeBuilderRoute
-  UnimarkRoute: typeof UnimarkRoute
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthSignupRoute: typeof AuthSignupRoute
-}
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BlogRouteRoute: BlogRouteRouteWithChildren,
@@ -371,86 +404,11 @@ const rootRouteChildren: RootRouteChildren = {
   ItHelpDeskRoute: ItHelpDeskRoute,
   NavigationRoute: NavigationRoute,
   ResumeBuilderRoute: ResumeBuilderRoute,
+  TradieRoute: TradieRoute,
   UnimarkRoute: UnimarkRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/blog",
-        "/_authenticated",
-        "/about",
-        "/home",
-        "/it-help-desk",
-        "/navigation",
-        "/resume-builder",
-        "/unimark",
-        "/_auth/login",
-        "/_auth/signup"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/blog": {
-      "filePath": "blog/route.tsx",
-      "children": [
-        "/blog/1",
-        "/blog/2"
-      ]
-    },
-    "/_authenticated": {
-      "filePath": "_authenticated.tsx",
-      "children": [
-        "/_authenticated/profile"
-      ]
-    },
-    "/about": {
-      "filePath": "about.tsx"
-    },
-    "/home": {
-      "filePath": "home.tsx"
-    },
-    "/it-help-desk": {
-      "filePath": "it-help-desk.tsx"
-    },
-    "/navigation": {
-      "filePath": "navigation.tsx"
-    },
-    "/resume-builder": {
-      "filePath": "resume-builder.tsx"
-    },
-    "/unimark": {
-      "filePath": "unimark.tsx"
-    },
-    "/_auth/login": {
-      "filePath": "_auth/login.tsx"
-    },
-    "/_auth/signup": {
-      "filePath": "_auth/signup.tsx"
-    },
-    "/_authenticated/profile": {
-      "filePath": "_authenticated/profile.tsx",
-      "parent": "/_authenticated"
-    },
-    "/blog/1": {
-      "filePath": "blog/1.tsx",
-      "parent": "/blog"
-    },
-    "/blog/2": {
-      "filePath": "blog/2.tsx",
-      "parent": "/blog"
-    }
-  }
-}
-ROUTE_MANIFEST_END */
