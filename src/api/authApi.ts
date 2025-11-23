@@ -1,30 +1,18 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { api } from "@/api/apiClient";
-import { type CreateUser } from "@server/sharedTypes";
-import { handleResponseError, safeJson } from "@/lib/utils";
-import type { User } from "@server/db/schema/user";
+import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { toast } from "sonner";
 
-export const auth = api.auth;
+import { api } from "@/api/apiClient"; // Your Hono RPC client
+import { handleResponseError, safeJson } from "@/lib/utils";
+import type { User } from "@server/db/schema/user"; // Adjust import path as needed
 
-export async function getAllUser() {
-  const res = await auth.$get();
-  if (!res.ok) {
-    throw new Error("server error");
-  }
-  const data = await res.json();
-  return data;
-}
+export const auth = api.auth; // Assuming your RPC route is mounted at /auth
 
-export const getAllUserQueryOptions = queryOptions({
-  queryKey: ["get-all-user"],
-  queryFn: getAllUser,
-  staleTime: Infinity,
-});
+// --- QUERIES ---
 
 async function getCurrentUser() {
   const res = await auth.me.$get();
+  // Using your existing safeJson utility
   return safeJson<User>(res);
 }
 
@@ -35,52 +23,103 @@ export const getUserQueryOptions = queryOptions({
   retry: false,
 });
 
-export async function createUser(value: CreateUser) {
-  const res = await auth.signup.$post({ json: value });
-  await handleResponseError(res);
-  return await res;
+// --- MUTATIONS (WebAuthn Logic) ---
+
+/**
+ * REGISTRATION (The 2-step Dance)
+ */
+export async function registerUser({ email }: { email: string }) {
+  // 1. Get Options from Server
+  const optRes = await auth.register.options.$post({ json: { email } });
+  if (!optRes.ok) throw new Error("Failed to get registration options");
+  const options = await optRes.json();
+
+  // 2. Sign in Browser (Passkey prompt)
+  let attResp;
+  try {
+    attResp = await startRegistration({ optionsJSON: options });
+  } catch (error: any) {
+    if (error.name === "InvalidStateError") {
+      throw new Error("This device is already registered.");
+    }
+    throw error;
+  }
+
+  // 3. Verify with Server
+  const verRes = await auth.register.verify.$post({
+    json: { email, response: attResp },
+  });
+
+  await handleResponseError(verRes);
+  return await verRes.json();
 }
 
-export function useCreateUserMutation() {
+export function useRegisterMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createUser,
-
+    mutationFn: registerUser,
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: [getUserQueryOptions] });
+      toast.success("Account created!");
+      // Refetch user to log them in immediately
+      queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
+    },
+    onError: (err) => {
+      toast.error(err.message);
     },
   });
 }
 
-export async function loginUser({ email, password }: { email: string; password: string }) {
-  const res = await auth.login.$post({ form: { email, password } });
+/**
+ * LOGIN (The 2-step Dance)
+ */
+export async function loginUser({ email }: { email: string }) {
+  // 1. Get Options
+  const optRes = await auth.login.options.$post({ json: { email } });
+  if (!optRes.ok) {
+    if (optRes.status === 404) throw new Error("User not found");
+    throw new Error("Failed to get login options");
+  }
+  const options = await optRes.json();
 
-  if (!res.ok) {
-    throw new Error("Invalid email or password");
+  // 2. Sign in Browser
+  let authResp;
+  try {
+    authResp = await startAuthentication({ optionsJSON: options });
+  } catch (error) {
+    throw new Error("Authentication cancelled or failed");
   }
 
-  return res;
+  // 3. Verify
+  const verRes = await auth.login.verify.$post({
+    json: { email, response: authResp },
+  });
+
+  if (!verRes.ok) throw new Error("Login verification failed");
+  return await verRes.json();
 }
+
 export function useLoginMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: loginUser,
-
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: [getUserQueryOptions] });
+      toast.success("Welcome back!");
+      queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
+    },
+    onError: (err) => {
+      toast.error(err.message);
     },
   });
 }
 
+/**
+ * LOGOUT
+ */
 export async function logoutUser() {
   const res = await auth.logout.$post();
   if (!res.ok) {
-    throw new Error("We didn't log you out mate!");
+    throw new Error("Logout failed");
   }
-  toast("Logout Successful", {
-    description: `Adios!`,
-  });
-  return res;
 }
 
 export function useLogoutMutation() {
@@ -88,18 +127,9 @@ export function useLogoutMutation() {
   return useMutation({
     mutationFn: logoutUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [getUserQueryOptions] });
-      window.location.href = "/";
+      toast.info("Logged out", { description: "See you next time!" });
+      queryClient.setQueryData(getUserQueryOptions.queryKey, null);
+      window.location.href = "/"; // Hard reload to clear client state
     },
   });
-}
-
-export async function deleteUser({ id }: { id: string }) {
-  const res = await auth[":id{[a-zA-Z0-9]+}"].$delete({
-    param: { id: id.toString() },
-  });
-
-  if (!res.ok) {
-    throw new Error("server error");
-  }
 }

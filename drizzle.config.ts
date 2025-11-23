@@ -7,6 +7,7 @@ export default defineConfig({
     "./worker/db/schema/githubCache.ts",
     "./worker/db/schema/session.ts",
     "./worker/db/schema/blogMetadata.ts",
+    "./worker/db/schema/authenticator.ts",
   ],
   dialect: "sqlite",
 });

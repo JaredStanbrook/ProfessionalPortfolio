@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import { useQuery } from "@tanstack/react-query";
+import { getUserQueryOptions } from "@/api/authApi";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/blog/$slug")({
   component: BlogView,
@@ -23,6 +26,11 @@ interface BlogData {
 function BlogView() {
   const { slug } = Route.useParams();
   const navigate = useNavigate();
+  const {
+    isPending: isUserPending,
+    error: userError,
+    data: userData,
+  } = useQuery(getUserQueryOptions);
   const [blog, setBlog] = useState<BlogData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,51 +97,68 @@ function BlogView() {
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground mb-4">{error || "Blog not found"}</h1>
-          <button
-            onClick={() => navigate({ to: "/" })}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90">
-            ← Back to Home
-          </button>
+          <Button variant="outline" onClick={() => navigate({ to: "/" })}>
+            <span className="text-base">Back</span>
+            <span className="text-xs ml-1 text-foreground/75">Back</span>
+            <span className="text-tiny ml-1 text-foreground/50">Back</span>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-background via-background to-muted/20">
-        <div className="max-w-4xl mx-auto px-6 py-16 lg:py-24">
-          {/* Meta Information */}
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
-              {blog.metadata.subject}
-            </span>
-            <span className="text-muted-foreground text-sm">•</span>
-            <span className="text-muted-foreground text-sm">{blog.metadata.readTime} min read</span>
-            <span className="text-muted-foreground text-sm">•</span>
-            <span className="text-sm text-muted-foreground">Jared Stanbrook</span>
-            <span className="text-muted-foreground text-sm">•</span>
-            <span className="text-sm text-muted-foreground">
-              {formatDate(blog.metadata.createdAt)}
-            </span>
-            {blog.metadata.createdAt !== blog.metadata.updatedAt && (
-              <>
-                <span className="text-muted-foreground text-sm">•</span>
-                <span className="text-sm text-muted-foreground italic">
-                  Updated {formatDate(blog.metadata.updatedAt)}
-                </span>
-              </>
-            )}
-          </div>
+    <>
+      <div className="flex justify-center py-8 gap-3">
+        <Button variant="outline" onClick={() => navigate({ to: "/" })}>
+          <span className="text-base">Back</span>
+          <span className="text-xs ml-1 text-foreground/75">Back</span>
+          <span className="text-tiny ml-1 text-foreground/50">Back</span>
+        </Button>
+        {userData && (
+          <Button
+            variant="outline"
+            onClick={() => navigate({ to: "/editor/$slug", params: { slug } })}>
+            Edit
+          </Button>
+        )}
+      </div>
+      <div className="min-h-screen bg-background">
+        {/* Hero Section */}
+        <section className="relative bg-gradient-to-br from-background via-background to-muted/20">
+          <div className="max-w-4xl mx-auto px-6 py-16 lg:py-24">
+            {/* Meta Information */}
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
+                {blog.metadata.subject}
+              </span>
+              <span className="text-muted-foreground text-sm">•</span>
+              <span className="text-muted-foreground text-sm">
+                {blog.metadata.readTime} min read
+              </span>
+              <span className="text-muted-foreground text-sm">•</span>
+              <span className="text-sm text-muted-foreground">Jared Stanbrook</span>
+              <span className="text-muted-foreground text-sm">•</span>
+              <span className="text-sm text-muted-foreground">
+                {formatDate(blog.metadata.createdAt)}
+              </span>
+              {blog.metadata.createdAt !== blog.metadata.updatedAt && (
+                <>
+                  <span className="text-muted-foreground text-sm">•</span>
+                  <span className="text-sm text-muted-foreground italic">
+                    Updated {formatDate(blog.metadata.updatedAt)}
+                  </span>
+                </>
+              )}
+            </div>
 
-          {/* Title */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-8 leading-tight">
-            {blog.metadata.title}
-          </h1>
-          {/* Content */}
-          <article
-            className="prose prose-lg dark:prose-invert max-w-none
+            {/* Title */}
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-8 leading-tight">
+              {blog.metadata.title}
+            </h1>
+            {/* Content */}
+            <article
+              className="prose prose-lg dark:prose-invert max-w-none
           prose-headings:text-foreground 
           prose-p:text-muted-foreground
           prose-a:text-primary hover:prose-a:text-primary/80
@@ -144,12 +169,13 @@ function BlogView() {
           prose-img:rounded-lg prose-img:shadow-lg
           prose-hr:border-border
         ">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-              {blog.content}
-            </ReactMarkdown>
-          </article>
-        </div>
-      </section>
-    </div>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                {blog.content}
+              </ReactMarkdown>
+            </article>
+          </div>
+        </section>
+      </div>
+    </>
   );
 }

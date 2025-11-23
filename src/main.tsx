@@ -2,25 +2,46 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { ThemeProvider } from "@/components/theme-provider";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 
-// Import the generated route tree
+// Import your route tree and auth options
 import { routeTree } from "./routeTree.gen";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { getUserQueryOptions } from "./api/authApi";
 
-// Create a client
 const queryClient = new QueryClient();
 
-// Create a new router instance
-const router = createRouter({ routeTree, context: { queryClient } });
+// 1. Create Router with undefined context (it will be injected in InnerApp)
+const router = createRouter({
+  routeTree,
+  context: {
+    queryClient,
+    auth: undefined!,
+  },
+  defaultPreload: "intent",
+  // Optional: Default expiration for preloaded data
+  defaultPreloadStaleTime: 0,
+});
 
-// Register the router instance for type safety
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
 }
 
-// Render the app
+// 2. Create an Inner Component to bridge React Query -> Router
+function InnerApp() {
+  // This hook runs globally and keeps 'user' state fresh
+  const { data: user, isLoading } = useQuery(getUserQueryOptions);
+
+  const authContext = {
+    user: user ?? null,
+    isAuthenticated: !!user,
+    isLoading,
+  };
+
+  return <RouterProvider router={router} context={{ auth: authContext }} />;
+}
+
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
@@ -28,7 +49,7 @@ if (!rootElement.innerHTML) {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-          <RouterProvider router={router} />
+          <InnerApp />
         </ThemeProvider>
       </QueryClientProvider>
     </StrictMode>

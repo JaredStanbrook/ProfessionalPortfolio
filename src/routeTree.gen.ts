@@ -9,29 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnimarkRouteImport } from './routes/unimark'
 import { Route as TradieRouteImport } from './routes/tradie'
 import { Route as ResumeBuilderRouteImport } from './routes/resume-builder'
 import { Route as NavigationRouteImport } from './routes/navigation'
 import { Route as ItHelpDeskRouteImport } from './routes/it-help-desk'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as GradeCalculatorRouteImport } from './routes/grade-calculator'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
-import { Route as BlogRouteRouteImport } from './routes/blog/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as BlogEditorRouteImport } from './routes/blog/editor'
 import { Route as Blog2RouteImport } from './routes/blog/2'
 import { Route as Blog1RouteImport } from './routes/blog/1'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
-import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthenticatedEditorIndexRouteImport } from './routes/_authenticated/editor/index'
+import { Route as AuthenticatedEditorSlugRouteImport } from './routes/_authenticated/editor/$slug'
 
-const UnimarkRoute = UnimarkRouteImport.update({
-  id: '/unimark',
-  path: '/unimark',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TradieRoute = TradieRouteImport.update({
   id: '/tradie',
   path: '/tradie',
@@ -57,6 +53,11 @@ const HomeRoute = HomeRouteImport.update({
   path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GradeCalculatorRoute = GradeCalculatorRouteImport.update({
+  id: '/grade-calculator',
+  path: '/grade-calculator',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -66,44 +67,39 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogRouteRoute = BlogRouteRouteImport.update({
-  id: '/blog',
-  path: '/blog',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogEditorRoute = BlogEditorRouteImport.update({
-  id: '/editor',
-  path: '/editor',
-  getParentRoute: () => BlogRouteRoute,
-} as any)
 const Blog2Route = Blog2RouteImport.update({
-  id: '/2',
-  path: '/2',
-  getParentRoute: () => BlogRouteRoute,
+  id: '/blog/2',
+  path: '/blog/2',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const Blog1Route = Blog1RouteImport.update({
-  id: '/1',
-  path: '/1',
-  getParentRoute: () => BlogRouteRoute,
+  id: '/blog/1',
+  path: '/blog/1',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => BlogRouteRoute,
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/_auth/signup',
-  path: '/signup',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/_auth/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -111,145 +107,157 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedEditorIndexRoute =
+  AuthenticatedEditorIndexRouteImport.update({
+    id: '/editor/',
+    path: '/editor/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedEditorSlugRoute = AuthenticatedEditorSlugRouteImport.update({
+  id: '/editor/$slug',
+  path: '/editor/$slug',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/blog': typeof BlogRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/grade-calculator': typeof GradeCalculatorRoute
   '/home': typeof HomeRoute
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
   '/resume-builder': typeof ResumeBuilderRoute
   '/tradie': typeof TradieRoute
-  '/unimark': typeof UnimarkRoute
   '/login': typeof AuthLoginRoute
-  '/signup': typeof AuthSignupRoute
+  '/register': typeof AuthRegisterRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/1': typeof Blog1Route
   '/blog/2': typeof Blog2Route
-  '/blog/editor': typeof BlogEditorRoute
+  '/editor/$slug': typeof AuthenticatedEditorSlugRoute
+  '/editor': typeof AuthenticatedEditorIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/blog': typeof BlogRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/grade-calculator': typeof GradeCalculatorRoute
   '/home': typeof HomeRoute
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
   '/resume-builder': typeof ResumeBuilderRoute
   '/tradie': typeof TradieRoute
-  '/unimark': typeof UnimarkRoute
   '/login': typeof AuthLoginRoute
-  '/signup': typeof AuthSignupRoute
+  '/register': typeof AuthRegisterRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/1': typeof Blog1Route
   '/blog/2': typeof Blog2Route
-  '/blog/editor': typeof BlogEditorRoute
+  '/editor/$slug': typeof AuthenticatedEditorSlugRoute
+  '/editor': typeof AuthenticatedEditorIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/blog': typeof BlogRouteRouteWithChildren
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/about': typeof AboutRoute
+  '/grade-calculator': typeof GradeCalculatorRoute
   '/home': typeof HomeRoute
   '/it-help-desk': typeof ItHelpDeskRoute
   '/navigation': typeof NavigationRoute
   '/resume-builder': typeof ResumeBuilderRoute
   '/tradie': typeof TradieRoute
-  '/unimark': typeof UnimarkRoute
   '/_auth/login': typeof AuthLoginRoute
-  '/_auth/signup': typeof AuthSignupRoute
+  '/_auth/register': typeof AuthRegisterRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/1': typeof Blog1Route
   '/blog/2': typeof Blog2Route
-  '/blog/editor': typeof BlogEditorRoute
+  '/_authenticated/editor/$slug': typeof AuthenticatedEditorSlugRoute
+  '/_authenticated/editor/': typeof AuthenticatedEditorIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/blog'
     | '/about'
+    | '/grade-calculator'
     | '/home'
     | '/it-help-desk'
     | '/navigation'
     | '/resume-builder'
     | '/tradie'
-    | '/unimark'
     | '/login'
-    | '/signup'
+    | '/register'
+    | '/dashboard'
     | '/profile'
     | '/blog/$slug'
     | '/blog/1'
     | '/blog/2'
-    | '/blog/editor'
+    | '/editor/$slug'
+    | '/editor'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/blog'
     | '/about'
+    | '/grade-calculator'
     | '/home'
     | '/it-help-desk'
     | '/navigation'
     | '/resume-builder'
     | '/tradie'
-    | '/unimark'
     | '/login'
-    | '/signup'
+    | '/register'
+    | '/dashboard'
     | '/profile'
     | '/blog/$slug'
     | '/blog/1'
     | '/blog/2'
-    | '/blog/editor'
+    | '/editor/$slug'
+    | '/editor'
   id:
     | '__root__'
     | '/'
-    | '/blog'
     | '/_authenticated'
     | '/about'
+    | '/grade-calculator'
     | '/home'
     | '/it-help-desk'
     | '/navigation'
     | '/resume-builder'
     | '/tradie'
-    | '/unimark'
     | '/_auth/login'
-    | '/_auth/signup'
+    | '/_auth/register'
+    | '/_authenticated/dashboard'
     | '/_authenticated/profile'
     | '/blog/$slug'
     | '/blog/1'
     | '/blog/2'
-    | '/blog/editor'
+    | '/_authenticated/editor/$slug'
+    | '/_authenticated/editor/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  BlogRouteRoute: typeof BlogRouteRouteWithChildren
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AboutRoute: typeof AboutRoute
+  GradeCalculatorRoute: typeof GradeCalculatorRoute
   HomeRoute: typeof HomeRoute
   ItHelpDeskRoute: typeof ItHelpDeskRoute
   NavigationRoute: typeof NavigationRoute
   ResumeBuilderRoute: typeof ResumeBuilderRoute
   TradieRoute: typeof TradieRoute
-  UnimarkRoute: typeof UnimarkRoute
   AuthLoginRoute: typeof AuthLoginRoute
-  AuthSignupRoute: typeof AuthSignupRoute
+  AuthRegisterRoute: typeof AuthRegisterRoute
+  BlogSlugRoute: typeof BlogSlugRoute
+  Blog1Route: typeof Blog1Route
+  Blog2Route: typeof Blog2Route
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/unimark': {
-      id: '/unimark'
-      path: '/unimark'
-      fullPath: '/unimark'
-      preLoaderRoute: typeof UnimarkRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/tradie': {
       id: '/tradie'
       path: '/tradie'
@@ -285,6 +293,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/grade-calculator': {
+      id: '/grade-calculator'
+      path: '/grade-calculator'
+      fullPath: '/grade-calculator'
+      preLoaderRoute: typeof GradeCalculatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -299,13 +314,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog': {
-      id: '/blog'
-      path: '/blog'
-      fullPath: '/blog'
-      preLoaderRoute: typeof BlogRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -313,33 +321,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/editor': {
-      id: '/blog/editor'
-      path: '/editor'
-      fullPath: '/blog/editor'
-      preLoaderRoute: typeof BlogEditorRouteImport
-      parentRoute: typeof BlogRouteRoute
-    }
     '/blog/2': {
       id: '/blog/2'
-      path: '/2'
+      path: '/blog/2'
       fullPath: '/blog/2'
       preLoaderRoute: typeof Blog2RouteImport
-      parentRoute: typeof BlogRouteRoute
+      parentRoute: typeof rootRouteImport
     }
     '/blog/1': {
       id: '/blog/1'
-      path: '/1'
+      path: '/blog/1'
       fullPath: '/blog/1'
       preLoaderRoute: typeof Blog1RouteImport
-      parentRoute: typeof BlogRouteRoute
+      parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
       id: '/blog/$slug'
-      path: '/$slug'
+      path: '/blog/$slug'
       fullPath: '/blog/$slug'
       preLoaderRoute: typeof BlogSlugRouteImport
-      parentRoute: typeof BlogRouteRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/profile': {
       id: '/_authenticated/profile'
@@ -348,11 +349,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_auth/signup': {
-      id: '/_auth/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof AuthSignupRouteImport
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_auth/register': {
+      id: '/_auth/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/login': {
@@ -362,33 +370,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/editor/': {
+      id: '/_authenticated/editor/'
+      path: '/editor'
+      fullPath: '/editor'
+      preLoaderRoute: typeof AuthenticatedEditorIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/editor/$slug': {
+      id: '/_authenticated/editor/$slug'
+      path: '/editor/$slug'
+      fullPath: '/editor/$slug'
+      preLoaderRoute: typeof AuthenticatedEditorSlugRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
-interface BlogRouteRouteChildren {
-  BlogSlugRoute: typeof BlogSlugRoute
-  Blog1Route: typeof Blog1Route
-  Blog2Route: typeof Blog2Route
-  BlogEditorRoute: typeof BlogEditorRoute
-}
-
-const BlogRouteRouteChildren: BlogRouteRouteChildren = {
-  BlogSlugRoute: BlogSlugRoute,
-  Blog1Route: Blog1Route,
-  Blog2Route: Blog2Route,
-  BlogEditorRoute: BlogEditorRoute,
-}
-
-const BlogRouteRouteWithChildren = BlogRouteRoute._addFileChildren(
-  BlogRouteRouteChildren,
-)
-
 interface AuthenticatedRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedEditorSlugRoute: typeof AuthenticatedEditorSlugRoute
+  AuthenticatedEditorIndexRoute: typeof AuthenticatedEditorIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedEditorSlugRoute: AuthenticatedEditorSlugRoute,
+  AuthenticatedEditorIndexRoute: AuthenticatedEditorIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -397,17 +407,19 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  BlogRouteRoute: BlogRouteRouteWithChildren,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AboutRoute: AboutRoute,
+  GradeCalculatorRoute: GradeCalculatorRoute,
   HomeRoute: HomeRoute,
   ItHelpDeskRoute: ItHelpDeskRoute,
   NavigationRoute: NavigationRoute,
   ResumeBuilderRoute: ResumeBuilderRoute,
   TradieRoute: TradieRoute,
-  UnimarkRoute: UnimarkRoute,
   AuthLoginRoute: AuthLoginRoute,
-  AuthSignupRoute: AuthSignupRoute,
+  AuthRegisterRoute: AuthRegisterRoute,
+  BlogSlugRoute: BlogSlugRoute,
+  Blog1Route: Blog1Route,
+  Blog2Route: Blog2Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

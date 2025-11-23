@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { integer, text, sqliteTable } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -8,7 +9,9 @@ export const blogMetadata = sqliteTable("blog_metadata", {
   title: text("title").notNull(),
   readTime: integer("readTime").notNull(),
   subject: text("subject").notNull(),
-  createdAt: text("createdAt").notNull(),
+  createdAt: text("createdAt")
+    .notNull()
+    .default(sql`(current_timestamp)`),
   updatedAt: text("updatedAt").notNull(),
 });
 

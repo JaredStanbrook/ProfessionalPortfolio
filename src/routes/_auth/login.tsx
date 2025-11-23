@@ -1,122 +1,83 @@
-import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
+import { useState } from "react";
+import { useLoginMutation } from "@/api/authApi";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { useForm } from "@tanstack/react-form";
-import { zodValidator } from "@tanstack/zod-form-adapter";
-import { createUserSchema } from "@server/sharedTypes";
-import { getUserQueryOptions, useLoginMutation, useLogoutMutation } from "@/api/authApi";
-import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_auth/login")({
-  component: Login,
+  // Redirect if already logged in
+  beforeLoad: ({ context }) => {
+    // Note: Assuming '/dashboard' is the correct protected route for redirection
+    if (context.auth.isAuthenticated) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
+  component: LoginPage,
 });
 
-function Login() {
-  const loginMutation = useLoginMutation();
-  const logoutMutation = useLogoutMutation();
+function LoginPage() {
+  const [email, setEmail] = useState("");
   const navigate = useNavigate();
-  const location = useLocation();
-  const queryClient = useQueryClient();
 
-  const form = useForm({
-    validatorAdapter: zodValidator(),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-    onSubmit: async ({ value }) => {
-      try {
-        const data = queryClient.getQueryData(getUserQueryOptions.queryKey);
+  // This mutation handles the entire WebAuthn dance
+  const { mutate: login, isPending } = useLoginMutation();
 
-        if (data) {
-          await logoutMutation.mutateAsync();
-        }
-
-        await loginMutation.mutateAsync(value);
-
-        // TODO: Update the cache with the latest user data using queryClient.setQueryData
-
-        const redirectUrl = new URLSearchParams(location.search).get("redirect") || "/";
-        navigate({ to: redirectUrl, replace: true });
-
-        toast("Login Successful", {
-          description: `Welcome back, ${value.email}!`,
-        });
-      } catch (error) {
-        toast("Error", { description: "Invalid email or password" });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    login(
+      { email },
+      {
+        onSuccess: () => {
+          navigate({ to: "/dashboard" });
+        },
       }
-    },
-  });
+    );
+  };
 
   return (
-    <div className="flex justify-center items-center min-h-screen">
-      <div className="w-full max-w-md p-6 border rounded-lg shadow-lg">
-        <h2 className="text-2xl text-center mb-6">Login</h2>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            void form.handleSubmit();
-          }}
-          className="flex flex-col gap-y-4 max-w-xl m-auto">
-          <form.Field
-            name="email"
-            validators={{ onChange: createUserSchema.shape.email }}
-            children={(field) => (
-              <div>
-                <Label htmlFor={field.name}>Email</Label>
-                <Input
-                  id={field.name}
-                  type="email"
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                />
-                {field.state.meta.isTouched ? <em>{field.state.meta.isTouched}</em> : null}
-              </div>
-            )}
-          />
+    <div className="container flex-grow flex flex-col items-center justify-center py-12">
+      <div className="mx-auto flex w-full flex-col justify-center space-y-8 sm:w-[400px] p-8 border rounded-lg shadow-xl bg-card">
+        {/* Header - Unified for Sign In */}
+        <div className="flex flex-col space-y-2 text-center">
+          <h1 className="text-3xl font-bold tracking-tight">Sign In</h1>
+          <p className="text-sm text-muted-foreground">
+            Enter your email to sign in using your registered Passkey.
+          </p>
+        </div>
 
-          <form.Field
-            name="password"
-            validators={{ onChange: createUserSchema.shape.password }}
-            children={(field) => (
-              <div>
-                <Label htmlFor={field.name}>Password</Label>
-                <Input
-                  id={field.name}
-                  type="password"
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                />
-                {field.state.meta.isTouched ? <em>{field.state.meta.isTouched}</em> : null}
-              </div>
-            )}
-          />
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoCapitalize="none"
+              autoComplete="email"
+              autoCorrect="off"
+              required
+            />
+          </div>
 
-          <form.Subscribe
-            selector={(state) => [state.canSubmit, state.isSubmitting]}
-            children={([canSubmit, isSubmitting]) => (
-              <Button className="mt-4" type="submit" disabled={!canSubmit}>
-                {isSubmitting ? "..." : "Login"}
-              </Button>
-            )}
-          />
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Waiting for Passkey..." : "Sign In with Passkey"}
+          </Button>
         </form>
-        <p className="text-sm text-gray-500 text-center mt-4">
-          <Button variant="link" className="p-0" onClick={() => navigate({ to: "/signup" })}>
-            Create Account?
-          </Button>
-        </p>
-        <p className="text-sm text-gray-500 text-center mt-4">
-          <Button variant="link" className="p-0" onClick={() => navigate({ to: "/login" })}>
-            Forgotten password?
-          </Button>
-        </p>
       </div>
+
+      {/* Footer Link - Fixed to point to Registration */}
+      <p className="px-8 mt-6 text-center text-sm text-muted-foreground">
+        Don't have an account?{" "}
+        <Link
+          to="/register"
+          className="underline underline-offset-4 hover:text-primary font-medium">
+          Create Account
+        </Link>
+      </p>
     </div>
   );
 }

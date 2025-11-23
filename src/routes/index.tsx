@@ -213,7 +213,7 @@ function Homepage() {
         }}
       />
 
-      <section className="w-full flex flex-col items-left pt-6 gap-2 z-50">
+      <section className="w-full flex flex-col items-left pt-6 gap-2 z-40">
         <div className="overflow-hidden">
           <span
             ref={titleRef}
@@ -288,12 +288,12 @@ function Homepage() {
                         {blog.subject}
                       </span>
                       <span className="ml-1 text-muted-foreground align-middle">
-                        · {blog.readTime} min read
+                        • {blog.readTime} min read
                       </span>
                     </span>
                     <h2 className="text-lg font-semibold mb-2">{blog.title}</h2>
                   </div>
-                  <div className="text-sm mt-4">Jared Stanbrook · {formatDate(blog.createdAt)}</div>
+                  <div className="text-sm mt-4">Jared Stanbrook • {formatDate(blog.createdAt)}</div>
                 </CardContent>
               </HighlightCard>
             ))}
