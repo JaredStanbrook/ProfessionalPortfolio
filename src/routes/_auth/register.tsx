@@ -38,18 +38,12 @@ function RegisterPage() {
           // Navigate to a protected route on successful registration
           navigate({ to: "/dashboard" });
         },
-        onError: (error) => {
-          // Fallback error handling if not caught by the mutation global handler
-          console.error(error);
-          toast.error("Registration failed. Try again.");
-        },
       }
     );
   };
 
   return (
     <div className="container flex-grow flex flex-col items-center justify-center py-12">
-      {/* 🚨 STYLING MATCH: Added p-8 border rounded-lg shadow-xl bg-card and adjusted width */}
       <div className="mx-auto flex w-full flex-col justify-center space-y-8 sm:w-[400px] p-8 border rounded-lg shadow-xl bg-card">
         {/* Header - Consistent Sign Up Styling */}
         <div className="flex flex-col space-y-2 text-center">
@@ -73,10 +67,9 @@ function RegisterPage() {
               disabled={isPending}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required // Added 'required' for consistency
+              required
             />
           </div>
-          {/* Button - Consistent text and spinner placement */}
           <Button disabled={isPending} type="submit">
             {isPending ? (
               <>

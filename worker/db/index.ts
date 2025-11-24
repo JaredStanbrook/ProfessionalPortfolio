@@ -11,19 +11,21 @@ import { user, type User } from "./schema/user";
 // Types
 export type CustomContext = {
   db: ReturnType<typeof drizzle>;
+  kv: KVNamespace;
   user: User | null;
   session: { id: string } | null;
   setSession: (userId: string) => Promise<void>;
   destroySession: () => Promise<void>;
   // WebAuthn Helpers
-  setChallenge: (challenge: string) => void;
-  getChallenge: () => string | undefined;
+  setChallenge: (challenge: string) => Promise<string>;
+  getChallenge: (challengeId: string) => Promise<string | null>;
 };
 
-const SESSION_COOKIE = "session"; //__Secure-session user for PROD
-const CHALLENGE_COOKIE = "challenge"; //__Secure-challenge use for PROD
+const SESSION_COOKIE = "__Secure-session";
+const CHALLENGE_PREFIX = "webauthn_challenge:";
+const CHALLENGE_TTL = 60 * 5; // 5 minutes
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
-const CSRF_COOKIE = "csrf_token"; // __Host-csrf_token for PROD
+const CSRF_COOKIE = "__Host-csrf_token";
 const CSRF_HEADER = "x-csrf-token";
 
 // --- Crypto Helpers ---
@@ -67,8 +69,8 @@ export const authMiddleware = createMiddleware<{
   Bindings: Env;
   Variables: CustomContext;
 }>(async (c, next) => {
-  const db = drizzle(c.env.DB);
-  c.set("db", db);
+  const db = c.get("db");
+  const kv = c.env.KV;
 
   // 1. Initialize context
   let currentUser: User | null = null;
@@ -148,22 +150,35 @@ export const authMiddleware = createMiddleware<{
     c.set("session", null);
   });
 
-  // 6. Define Helpers: WebAuthn Challenge (Ephemeral cookie)
-  c.set("setChallenge", (challenge: string) => {
-    setCookie(c, CHALLENGE_COOKIE, challenge, {
-      path: "/",
-      secure: true,
-      httpOnly: true,
-      sameSite: "Strict",
-      maxAge: 60 * 5, // 5 minutes expiry for challenge
+  // 6. Define Helpers: WebAuthn Challenge (KV-based)
+  c.set("setChallenge", async (challenge: string): Promise<string> => {
+    // Generate a unique challenge ID
+    const challengeId = randomString(32);
+    const kvKey = `${CHALLENGE_PREFIX}${challengeId}`;
+
+    // Store in KV with TTL
+    await kv.put(kvKey, challenge, {
+      expirationTtl: CHALLENGE_TTL,
     });
+
+    console.log(`Stored challenge in KV: ${kvKey}`);
+    return challengeId; // Return ID to send to frontend
   });
 
-  c.set("getChallenge", () => {
-    const val = getCookie(c, CHALLENGE_COOKIE);
+  c.set("getChallenge", async (challengeId: string): Promise<string | null> => {
+    const kvKey = `${CHALLENGE_PREFIX}${challengeId}`;
+
+    // Retrieve from KV
+    const challenge = await kv.get(kvKey, "text");
+
+    console.log(`Retrieved challenge from KV: ${kvKey} -> ${challenge ? "found" : "not found"}`);
+
     // Delete immediately after retrieval to prevent replay
-    deleteCookie(c, CHALLENGE_COOKIE);
-    return val;
+    if (challenge) {
+      await kv.delete(kvKey);
+    }
+
+    return challenge;
   });
 
   await next();

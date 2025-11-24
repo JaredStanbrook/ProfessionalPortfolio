@@ -1,19 +1,65 @@
+// src/api/authApi.ts - Updated for KV-based challenge storage with Hono RPC
+
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { toast } from "sonner";
 
 import { api } from "@/api/apiClient"; // Your Hono RPC client
-import { handleResponseError, safeJson } from "@/lib/utils";
-import type { User } from "@server/db/schema/user"; // Adjust import path as needed
+import type { User } from "@server/db/schema/user";
 
-export const auth = api.auth; // Assuming your RPC route is mounted at /auth
+export const auth = api.auth;
+
+// Type for options response (now includes challengeId)
+interface RegistrationOptionsResponse {
+  challenge: string;
+  challengeId: string;
+  rp: {
+    name: string;
+    id: string;
+  };
+  user: {
+    id: string;
+    name: string;
+    displayName: string;
+  };
+  pubKeyCredParams: Array<{
+    type: string;
+    alg: number;
+  }>;
+  timeout?: number;
+  excludeCredentials?: Array<any>;
+  authenticatorSelection?: any;
+  attestation?: string;
+}
+
+interface AuthenticationOptionsResponse {
+  challenge: string;
+  challengeId: string;
+  timeout?: number;
+  rpId?: string;
+  allowCredentials?: Array<any>;
+  userVerification?: string;
+}
+
+// Helper to extract error message from Hono RPC response
+async function getErrorMessage(res: Response): Promise<string> {
+  try {
+    const data = await res.json();
+    // Hono RPC error format typically has an 'error' field
+    return data.error || data.message || "An unexpected error occurred";
+  } catch {
+    return `Request failed with status ${res.status}`;
+  }
+}
 
 // --- QUERIES ---
 
 async function getCurrentUser() {
   const res = await auth.me.$get();
-  // Using your existing safeJson utility
-  return safeJson<User>(res);
+  if (!res.ok) {
+    throw new Error(await getErrorMessage(res));
+  }
+  return (await res.json()) as User;
 }
 
 export const getUserQueryOptions = queryOptions({
@@ -26,31 +72,60 @@ export const getUserQueryOptions = queryOptions({
 // --- MUTATIONS (WebAuthn Logic) ---
 
 /**
- * REGISTRATION (The 2-step Dance)
+ * REGISTRATION (The 2-step Dance with KV Challenge)
  */
 export async function registerUser({ email }: { email: string }) {
-  // 1. Get Options from Server
+  // 1. Get Options from Server (includes challengeId)
   const optRes = await auth.register.options.$post({ json: { email } });
-  if (!optRes.ok) throw new Error("Failed to get registration options");
-  const options = await optRes.json();
+
+  // Handle 409 Conflict - email already registered
+  if (optRes.status === 409) {
+    throw new Error("This email is already registered. Please proceed to login.");
+  }
+
+  if (!optRes.ok) {
+    const errorMsg = await getErrorMessage(optRes);
+    throw new Error(errorMsg);
+  }
+
+  const options = (await optRes.json()) as RegistrationOptionsResponse;
+
+  console.log("Registration options received:", {
+    challengeId: options.challengeId,
+    hasChallenge: !!options.challenge,
+  });
 
   // 2. Sign in Browser (Passkey prompt)
   let attResp;
   try {
     attResp = await startRegistration({ optionsJSON: options });
   } catch (error: any) {
+    // Handle specific WebAuthn errors
     if (error.name === "InvalidStateError") {
-      throw new Error("This device is already registered.");
+      throw new Error("A passkey for this account already exists on this device. Please log in.");
     }
+
+    if (error.name === "NotAllowedError") {
+      throw new Error("Passkey operation cancelled or disallowed by the browser.");
+    }
+
     throw error;
   }
 
-  // 3. Verify with Server
+  // 3. Verify with Server (send challengeId back)
   const verRes = await auth.register.verify.$post({
-    json: { email, response: attResp },
+    json: {
+      email,
+      response: attResp,
+      challengeId: options.challengeId,
+    },
   });
 
-  await handleResponseError(verRes);
+  if (!verRes.ok) {
+    const errorMsg = await getErrorMessage(verRes);
+    throw new Error(errorMsg);
+  }
+
   return await verRes.json();
 }
 
@@ -60,41 +135,77 @@ export function useRegisterMutation() {
     mutationFn: registerUser,
     onSuccess: () => {
       toast.success("Account created!");
-      // Refetch user to log them in immediately
       queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
     },
     onError: (err) => {
-      toast.error(err.message);
+      console.error("Registration error:", err);
+
+      if (err.message.includes("Passkey operation cancelled")) {
+        toast.info("Registration cancelled.");
+      } else if (err.message.includes("already registered")) {
+        toast.error(err.message, {
+          description: "Click 'Sign In' below to continue.",
+          duration: 8000,
+        });
+      } else if (err.message.includes("Challenge expired")) {
+        toast.error("Registration timed out. Please try again.", {
+          description: "The security challenge expired after 5 minutes.",
+          duration: 5000,
+        });
+      } else {
+        toast.error(err.message);
+      }
     },
   });
 }
 
 /**
- * LOGIN (The 2-step Dance)
+ * LOGIN (The 2-step Dance with KV Challenge)
  */
 export async function loginUser({ email }: { email: string }) {
-  // 1. Get Options
+  // 1. Get Options (includes challengeId)
   const optRes = await auth.login.options.$post({ json: { email } });
+
   if (!optRes.ok) {
-    if (optRes.status === 404) throw new Error("User not found");
-    throw new Error("Failed to get login options");
+    if (optRes.status === 404) {
+      throw new Error("User not found");
+    }
+    const errorMsg = await getErrorMessage(optRes);
+    throw new Error(errorMsg);
   }
-  const options = await optRes.json();
+
+  const options = (await optRes.json()) as AuthenticationOptionsResponse;
+
+  console.log("Authentication options received:", {
+    challengeId: options.challengeId,
+    hasChallenge: !!options.challenge,
+  });
 
   // 2. Sign in Browser
   let authResp;
   try {
     authResp = await startAuthentication({ optionsJSON: options });
-  } catch (error) {
-    throw new Error("Authentication cancelled or failed");
+  } catch (error: any) {
+    if (error.name === "NotAllowedError") {
+      throw new Error("Authentication cancelled by user.");
+    }
+    throw new Error("Authentication failed or cancelled");
   }
 
-  // 3. Verify
+  // 3. Verify (send challengeId back)
   const verRes = await auth.login.verify.$post({
-    json: { email, response: authResp },
+    json: {
+      email,
+      response: authResp,
+      challengeId: options.challengeId,
+    },
   });
 
-  if (!verRes.ok) throw new Error("Login verification failed");
+  if (!verRes.ok) {
+    const errorMsg = await getErrorMessage(verRes);
+    throw new Error(errorMsg);
+  }
+
   return await verRes.json();
 }
 
@@ -107,7 +218,18 @@ export function useLoginMutation() {
       queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
     },
     onError: (err) => {
-      toast.error(err.message);
+      console.error("Login error:", err);
+
+      if (err.message.includes("cancelled by user")) {
+        toast.info("Login cancelled.");
+      } else if (err.message.includes("Challenge expired")) {
+        toast.error("Login timed out. Please try again.", {
+          description: "The security challenge expired after 5 minutes.",
+          duration: 5000,
+        });
+      } else {
+        toast.error(err.message);
+      }
     },
   });
 }
@@ -118,7 +240,8 @@ export function useLoginMutation() {
 export async function logoutUser() {
   const res = await auth.logout.$post();
   if (!res.ok) {
-    throw new Error("Logout failed");
+    const errorMsg = await getErrorMessage(res);
+    throw new Error(errorMsg);
   }
 }
 

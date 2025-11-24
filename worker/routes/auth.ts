@@ -17,10 +17,6 @@ import {
 import { user } from "../db/schema/user";
 import { authenticator } from "../db/schema/authenticator";
 
-const rpName = "My App";
-const rpID = "localhost"; // CHANGE THIS IN PRODUCTION (e.g., "myapp.com")
-const origin = `http://${rpID}:5173`; // CHANGE THIS IN PRODUCTION
-
 export const authRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
   .use("*", dbMiddleware)
   .use("*", authMiddleware)
@@ -35,36 +31,43 @@ export const authRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
     const { email } = await c.req.json<{ email: string }>();
     if (!email) return c.json({ error: "Email required" }, 400);
 
+    // --- START: Hardcoded Email Check for Access Control ---
+
+    if (email.toLowerCase() !== c.env.ALLOWED_EMAIL.toLowerCase()) {
+      // Return a generic error to avoid leaking information about which emails are valid
+      // or simply reject with a specific message for testing/development purposes.
+      console.warn(`Attempted registration with restricted email: ${email}`);
+      return c.json({ error: "Registration is invite-only." }, 403);
+    }
+    // --- END: Hardcoded Email Check ---
     const db = c.get("db");
 
     // Check if user exists, or prepare a new ID
     const existingUser = await db.select().from(user).where(eq(user.email, email)).get();
-    const userID = existingUser ? existingUser.id : crypto.randomUUID();
+    if (existingUser) {
+      return c.json({ error: "This email is already registered" }, 409);
+    }
 
-    // Get existing authenticators
-    const userAuthenticators = existingUser
-      ? await db.select().from(authenticator).where(eq(authenticator.userId, existingUser.id)).all()
-      : [];
-
+    const userID = crypto.randomUUID();
     const options = await generateRegistrationOptions({
-      rpName,
-      rpID,
+      rpName: c.env.RP_NAME,
+      rpID: c.env.RP_ID,
       userID: isoUint8Array.fromUTF8String(userID),
       userName: email,
       attestationType: "none",
-      excludeCredentials: userAuthenticators.map((auth) => ({
-        id: auth.credentialId,
-        transports: auth.transports ? JSON.parse(auth.transports) : undefined,
-      })),
+      excludeCredentials: [],
       authenticatorSelection: {
         residentKey: "preferred",
         userVerification: "preferred",
       },
     });
 
-    c.get("setChallenge")(options.challenge);
+    const challengeId = await c.get("setChallenge")(options.challenge);
 
-    return c.json(options);
+    return c.json({
+      ...options,
+      challengeId,
+    });
   })
 
   /**
@@ -72,16 +75,28 @@ export const authRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
    */
   .post("/register/verify", async (c) => {
     try {
-      const { email, response } = await c.req.json();
-      const challenge = c.get("getChallenge")();
+      const { email, response, challengeId } = await c.req.json<{
+        email: string;
+        response: any;
+        challengeId: string;
+      }>();
 
-      if (!challenge) return c.json({ error: "Challenge expired" }, 400);
+      if (!challengeId) {
+        return c.json({ error: "Challenge ID required" }, 400);
+      }
+
+      // Retrieve challenge from KV using the ID
+      const challenge = await c.get("getChallenge")(challengeId);
+
+      if (!challenge) {
+        return c.json({ error: "Challenge expired or not found" }, 400);
+      }
 
       const verification = await verifyRegistrationResponse({
         response,
         expectedChallenge: challenge,
-        expectedOrigin: origin,
-        expectedRPID: rpID,
+        expectedOrigin: c.env.ORIGIN,
+        expectedRPID: c.env.RP_ID,
       });
 
       if (verification.verified && verification.registrationInfo) {
@@ -144,7 +159,7 @@ export const authRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
       .all();
 
     const options = await generateAuthenticationOptions({
-      rpID,
+      rpID: c.env.RP_ID,
       allowCredentials: userAuths.map((auth) => ({
         id: auth.credentialId,
         transports: auth.transports ? JSON.parse(auth.transports) : undefined,
@@ -153,19 +168,33 @@ export const authRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
     });
 
     // Save challenge
-    c.get("setChallenge")(options.challenge);
+    const challengeId = await c.get("setChallenge")(options.challenge);
 
-    return c.json(options);
+    return c.json({
+      ...options,
+      challengeId, // Frontend needs this
+    });
   })
   /**
    * 4. LOGIN: Verify
    */
   .post("/login/verify", async (c) => {
-    const { email, response } = await c.req.json();
-    const challenge = c.get("getChallenge")();
+    const { email, response, challengeId } = await c.req.json<{
+      email: string;
+      response: any;
+      challengeId: string;
+    }>();
 
-    if (!challenge) return c.json({ error: "Challenge expired" }, 400);
+    if (!challengeId) {
+      return c.json({ error: "Challenge ID required" }, 400);
+    }
 
+    // Retrieve challenge from KV
+    const challenge = await c.get("getChallenge")(challengeId);
+
+    if (!challenge) {
+      return c.json({ error: "Challenge expired or not found" }, 400);
+    }
     const db = c.get("db");
     const foundUser = await db.select().from(user).where(eq(user.email, email)).get();
 
@@ -183,8 +212,8 @@ export const authRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge: challenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
+      expectedOrigin: c.env.ORIGIN,
+      expectedRPID: c.env.RP_ID,
       credential: {
         id: auth.credentialId,
         publicKey: isoBase64URL.toBuffer(auth.credentialPublicKey),

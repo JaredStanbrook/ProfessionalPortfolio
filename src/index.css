@@ -248,7 +248,6 @@
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
 }
-
 /* Container for scrolling text */
 .scroll-text-container {
   width: 100%; /* or set a fixed width */

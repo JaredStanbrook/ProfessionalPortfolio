@@ -5,7 +5,7 @@ import { QueryClient, useQuery } from "@tanstack/react-query";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Menu, LogOut, User as UserIcon, X } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 
 import "../index.css";
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,6 @@ function SidebarNavigation({ isOpen, onClose }: { isOpen: boolean; onClose: () =
               <Button
                 onClick={() => logoutMutation.mutate()}
                 disabled={logoutMutation.isPending}
-                className="w-full"
                 variant="destructive">
                 <LogOut className="mr-2 h-4 w-4" />
                 {logoutMutation.isPending ? "Logging out..." : "Log out"}
@@ -172,6 +171,14 @@ function Root() {
       {/* Main Content Area */}
       <div className="mx-auto flex flex-col min-h-screen max-w-screen-xl px-6 py-12 md:px-12 md:py-20 lg:px-24 lg:py-0">
         <Outlet />
+        <Toaster
+          position="bottom-right"
+          richColors
+          theme="light" // or "dark" based on your preference
+          toastOptions={{
+            className: "font-inter",
+          }}
+        />
         <TanStackRouterDevtools />
         <ReactQueryDevtools initialIsOpen={false} />
       </div>
