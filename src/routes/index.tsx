@@ -232,7 +232,7 @@ function Homepage() {
           transform: `translate(${Math.round(cursorState.position.x - cursorSize / 2)}px, ${Math.round(cursorState.position.y - cursorSize / 2)}px)`,
         }}
       />
-      <section className="w-full flex flex-col items-left pt-6 gap-2 z-40">
+      <section className="w-full flex flex-col items-left pt-6 gap-2 z-50">
         <div className="overflow-hidden">
           <span
             ref={titleRef}
@@ -242,18 +242,15 @@ function Homepage() {
             }}
             onMouseEnter={() => setHoveringTitle(true)}
             onMouseLeave={() => setHoveringTitle(false)}
-            className={`
+            className="
               text-2xl md:text-4xl font-extrabold tracking-tight text-foreground cursor-pointer
-              transition-all duration-300 select-none block whitespace-nowrap overflow-visible
-              ${typeof window !== "undefined" && window.innerWidth < 768 ? "scroll-text" : ""}
-            `}
+              transition-all duration-300 select-none block whitespace-nowrap overflow-visible"
             role="button"
             tabIndex={0}>
             <span className="hidden md:inline">
               {cursorState.isClose ? "Learn more about me." : "I'm Jared"}
             </span>
-            <span className="inline md:hidden">I'm Jared. Learn more about me.</span>
-            <span className="inline md:hidden ml-30">Click Me.</span>
+            <span className="inline md:hidden">Tap me to learn more about Jared.</span>
           </span>
         </div>
         <hr className="w-full border-t-2 border-foreground opacity-30 self-center" />

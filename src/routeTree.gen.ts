@@ -18,8 +18,6 @@ import { Route as GradeCalculatorRouteImport } from './routes/grade-calculator'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as Blog2RouteImport } from './routes/blog/2'
-import { Route as Blog1RouteImport } from './routes/blog/1'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -70,16 +68,6 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Blog2Route = Blog2RouteImport.update({
-  id: '/blog/2',
-  path: '/blog/2',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Blog1Route = Blog1RouteImport.update({
-  id: '/blog/1',
-  path: '/blog/1',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
@@ -133,8 +121,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/blog/1': typeof Blog1Route
-  '/blog/2': typeof Blog2Route
   '/editor/$slug': typeof AuthenticatedEditorSlugRoute
   '/editor': typeof AuthenticatedEditorIndexRoute
 }
@@ -152,8 +138,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/blog/1': typeof Blog1Route
-  '/blog/2': typeof Blog2Route
   '/editor/$slug': typeof AuthenticatedEditorSlugRoute
   '/editor': typeof AuthenticatedEditorIndexRoute
 }
@@ -173,8 +157,6 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/blog/1': typeof Blog1Route
-  '/blog/2': typeof Blog2Route
   '/_authenticated/editor/$slug': typeof AuthenticatedEditorSlugRoute
   '/_authenticated/editor/': typeof AuthenticatedEditorIndexRoute
 }
@@ -194,8 +176,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/profile'
     | '/blog/$slug'
-    | '/blog/1'
-    | '/blog/2'
     | '/editor/$slug'
     | '/editor'
   fileRoutesByTo: FileRoutesByTo
@@ -213,8 +193,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/profile'
     | '/blog/$slug'
-    | '/blog/1'
-    | '/blog/2'
     | '/editor/$slug'
     | '/editor'
   id:
@@ -233,8 +211,6 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/profile'
     | '/blog/$slug'
-    | '/blog/1'
-    | '/blog/2'
     | '/_authenticated/editor/$slug'
     | '/_authenticated/editor/'
   fileRoutesById: FileRoutesById
@@ -252,8 +228,6 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   BlogSlugRoute: typeof BlogSlugRoute
-  Blog1Route: typeof Blog1Route
-  Blog2Route: typeof Blog2Route
 }
 
 declare module '@tanstack/react-router' {
@@ -319,20 +293,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/2': {
-      id: '/blog/2'
-      path: '/blog/2'
-      fullPath: '/blog/2'
-      preLoaderRoute: typeof Blog2RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/1': {
-      id: '/blog/1'
-      path: '/blog/1'
-      fullPath: '/blog/1'
-      preLoaderRoute: typeof Blog1RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
@@ -418,8 +378,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   BlogSlugRoute: BlogSlugRoute,
-  Blog1Route: Blog1Route,
-  Blog2Route: Blog2Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

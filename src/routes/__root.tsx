@@ -62,14 +62,14 @@ function SidebarNavigation({ isOpen, onClose }: { isOpen: boolean; onClose: () =
       {/* Overlay to close sidebar when clicking outside */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 lg:hidden"
+          className="fixed inset-0 z-60 bg-black/50 transition-opacity duration-300 lg:hidden"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar Container */}
       <div
-        className={`fixed top-0 left-0 h-full w-64 bg-card shadow-2xl z-50 transform transition-transform duration-300 ease-in-out 
+        className={`fixed top-0 left-0 h-full w-64 bg-card shadow-2xl z-60 transform transition-transform duration-300 ease-in-out 
           ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {/* Header & Close Button */}
         <div className="flex justify-between items-center p-4 border-b">
@@ -153,7 +153,7 @@ function Root() {
       <SidebarNavigation isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
 
       {/* Fixed Header Bar */}
-      <div className="fixed flex flex-row gap-2 top-2.5 right-4 lg:w-full lg:flex-row lg:justify-between lg:right-0 lg:px-5 lg:top-4 z-40 pointer-events-none">
+      <div className="fixed flex flex-row gap-2 top-2.5 right-4 lg:w-full lg:flex-row lg:justify-between lg:right-0 lg:px-5 lg:top-4 z-50 pointer-events-none">
         {/* Left: Menu Toggle Button (Now controls local state) */}
         <div className="lg:order-first pointer-events-auto">
           <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(true)}>

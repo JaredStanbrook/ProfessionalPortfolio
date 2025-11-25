@@ -1,13 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // Import Input component
-import { Label } from "@/components/ui/label"; // Import Label component
-import { toast } from "sonner"; // Import toast for notifications
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
-import { Loader2 } from "lucide-react"; // Import Loader2 for consistent spinner
+import { Loader2, AlertCircle } from "lucide-react";
+
+import { getBlogContentQueryOptions, usePutBlogMutation } from "@/api/blogApi";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/editor/$slug")({
   component: EditBlogEditor,
@@ -21,43 +24,40 @@ function EditBlogEditor() {
   const [readTime, setReadTime] = useState(5);
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingBlog, setIsLoadingBlog] = useState(true);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   const currentFilename = `${slug}.mdx`;
+  const putBlog = usePutBlogMutation();
 
-  // Load existing blog
+  const {
+    data: initialBlogData,
+    isPending: isLoadingBlog,
+    error: loadError,
+    isError,
+  } = useQuery(getBlogContentQueryOptions(currentFilename));
+
+  // Load existing blog data once
   useEffect(() => {
-    loadBlog(currentFilename);
-  }, [slug]);
-
-  const loadBlog = async (filename: string) => {
-    setIsLoadingBlog(true);
-    try {
-      const response = await fetch(`/api/blog/${filename}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTitle(data.metadata.title);
-        setReadTime(data.metadata.readTime);
-        setSubject(data.metadata.subject);
-        setContent(data.content);
-        toast.success(`Successfully loaded blog: ${data.metadata.title}`);
-      } else {
-        toast.error("Failed to load blog post.");
-        navigate({ to: "/" });
-      }
-    } catch (error) {
-      console.error("Error loading blog:", error);
-      toast.error("A network error occurred while loading the blog.");
-      navigate({ to: "/" });
-    } finally {
-      setIsLoadingBlog(false);
+    if (initialBlogData && !hasLoadedData) {
+      setTitle(initialBlogData.metadata.title);
+      setReadTime(initialBlogData.metadata.readTime);
+      setSubject(initialBlogData.metadata.subject);
+      setContent(initialBlogData.content);
+      setHasLoadedData(true);
+      toast.success(`Loaded: ${initialBlogData.metadata.title}`);
     }
-  };
+  }, [initialBlogData, hasLoadedData]);
+
+  // Handle load error
+  useEffect(() => {
+    if (isError && loadError) {
+      toast.error("Failed to load blog post.");
+      navigate({ to: "/" });
+    }
+  }, [isError, loadError, navigate]);
 
   // Parse content without frontmatter for preview
   const contentWithoutFrontmatter = useMemo(() => {
-    // Only remove frontmatter if it exists and looks correctly formatted
     return content.replace(/^---\n[\s\S]+?\n---\n/, "").trim();
   }, [content]);
 
@@ -73,40 +73,38 @@ ${content.trim()}`;
 
   const handleSave = async () => {
     // Validation
-    if (!title.trim() || !subject.trim()) {
-      toast.error("Please fill in the Title and Subject metadata fields.");
+    if (!title.trim()) {
+      toast.error("Title is required.");
+      return;
+    }
+
+    if (!subject.trim()) {
+      toast.error("Subject is required.");
       return;
     }
 
     if (!content.trim()) {
-      toast.error("The blog content cannot be empty.");
+      toast.error("Content cannot be empty.");
       return;
     }
 
-    setIsLoading(true);
+    if (readTime < 1) {
+      toast.error("Read time must be at least 1 minute.");
+      return;
+    }
+
     try {
       const mdxContent = generateMDX();
-      const response = await fetch(`/api/blog/${currentFilename}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "text/plain",
-        },
-        body: mdxContent,
+      await putBlog.mutateAsync({
+        filename: currentFilename,
+        content: mdxContent,
       });
 
-      if (response.ok) {
-        toast.success("Blog updated successfully!");
-        // Navigate back to the view page
-        navigate({ to: "/blog/$slug", params: { slug } });
-      } else {
-        const error = await response.json();
-        toast.error(`Failed to save: ${error.error || "Unknown error"}`);
-      }
-    } catch (error) {
+      toast.success("Blog updated successfully!");
+      navigate({ to: "/blog/$slug", params: { slug } });
+    } catch (error: any) {
       console.error("Error saving blog:", error);
-      toast.error("A network error occurred while saving the blog.");
-    } finally {
-      setIsLoading(false);
+      toast.error(error?.message || "Failed to save blog.");
     }
   };
 
@@ -119,6 +117,19 @@ ${content.trim()}`;
       <div className="container flex-grow flex items-center justify-center min-h-[50vh] max-w-7xl mx-auto p-6">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2 text-primary">Loading blog content...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="container flex-grow flex items-center justify-center min-h-[50vh] max-w-7xl mx-auto p-6">
+        <div className="text-center space-y-4">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+          <h2 className="text-2xl font-bold">Failed to Load Blog</h2>
+          <p className="text-muted-foreground">Could not load the blog post. It may not exist.</p>
+          <Button onClick={() => navigate({ to: "/" })}>Return Home</Button>
+        </div>
       </div>
     );
   }
@@ -173,9 +184,11 @@ ${content.trim()}`;
               </Label>
               <Input
                 id="readTime"
-                type="number"
                 value={readTime}
-                onChange={(e) => setReadTime(parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setReadTime(val === "" ? 0 : parseInt(val));
+                }}
                 min="1"
                 required
               />
@@ -221,8 +234,8 @@ console.log('Hello, world!');
           </div>
 
           <div className="flex gap-3 pb-12">
-            <Button onClick={handleSave} disabled={isLoading} className="w-full">
-              {isLoading ? (
+            <Button onClick={handleSave} disabled={putBlog.isPending} className="w-full">
+              {putBlog.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
@@ -246,19 +259,17 @@ console.log('Hello, world!');
           </div>
 
           <div
-            className="markdown-content prose dark:prose-invert prose-lg max-w-none
-            prose-headings:font-bold prose-headings:border-b prose-headings:pb-1 prose-headings:mb-3
-            prose-h1:text-3xl prose-h1:mt-8
-            prose-h2:text-2xl prose-h2:mt-6
-            prose-h3:text-xl prose-h3:mt-4
-            prose-p:text-base prose-p:my-4
-            prose-a:text-primary hover:prose-a:text-primary/80
-            prose-strong:font-bold
-            prose-code:text-sm prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
-            prose-pre:bg-gray-800 prose-pre:text-white prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
-            prose-ul:list-disc prose-ul:pl-6 prose-ul:my-4
-            prose-ol:list-decimal prose-ol:pl-6 prose-ol:my-4
-          ">
+            className="prose prose-lg dark:prose-invert max-w-none
+          prose-headings:text-foreground 
+          prose-p:text-muted-foreground
+          prose-a:text-primary hover:prose-a:text-primary/80
+          prose-strong:text-foreground
+          prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+          prose-pre:bg-muted prose-pre:border prose-pre:border-border
+          prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
+          prose-img:rounded-lg prose-img:shadow-lg
+          prose-hr:border-border
+        ">
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
               {contentWithoutFrontmatter || "*Start typing to see preview...*"}
             </ReactMarkdown>

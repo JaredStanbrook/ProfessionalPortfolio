@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { dbMiddleware } from "../db";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
 
 interface BlogMetadata {
   filename: string;
@@ -75,57 +77,66 @@ export const blogRoute = new Hono<{ Bindings: Env }>()
   })
 
   // PUT a blog MDX file and update metadata in D1
-  .put("/:filename{.+\\.mdx}", async (c) => {
-    const filename = c.req.param("filename");
-    const body = await c.req.text();
+  .put(
+    "/:filename{.+\\.mdx}",
+    zValidator(
+      "json",
+      z.object({
+        body: z.string(),
+      })
+    ),
+    async (c) => {
+      const filename = c.req.param("filename");
+      const { body } = await c.req.json();
 
-    try {
-      // Check if blog already exists to determine if this is a create or update
-      const existingBlog = await c.env.DB.prepare(
-        "SELECT filename, createdAt FROM blog_metadata WHERE filename = ?"
-      )
-        .bind(filename)
-        .first();
+      try {
+        // Check if blog already exists to determine if this is a create or update
+        const existingBlog = await c.env.DB.prepare(
+          "SELECT filename, createdAt FROM blog_metadata WHERE filename = ?"
+        )
+          .bind(filename)
+          .first();
 
-      const now = new Date().toISOString();
-      const createdAt = existingBlog ? existingBlog.createdAt : now;
-      const updatedAt = now;
+        const now = new Date().toISOString();
+        const createdAt = existingBlog ? existingBlog.createdAt : now;
+        const updatedAt = now;
 
-      // Save file to R2
-      await c.env.BLOG.put(filename, body);
+        // Save file to R2
+        await c.env.BLOG.put(filename, body);
 
-      // Parse frontmatter for metadata
-      const metadata = parseFrontMatter(body);
+        // Parse frontmatter for metadata
+        const metadata = parseFrontMatter(body);
 
-      // Upsert metadata into D1 with timestamps
-      await c.env.DB.prepare(
-        `INSERT INTO blog_metadata (filename, title, readTime, subject, createdAt, updatedAt)
+        // Upsert metadata into D1 with timestamps
+        await c.env.DB.prepare(
+          `INSERT INTO blog_metadata (filename, title, readTime, subject, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT(filename) DO UPDATE SET 
          title=excluded.title, 
          readTime=excluded.readTime, 
          subject=excluded.subject,
          updatedAt=excluded.updatedAt`
-      )
-        .bind(filename, metadata.title, metadata.readTime, metadata.subject, createdAt, updatedAt)
-        .run();
+        )
+          .bind(filename, metadata.title, metadata.readTime, metadata.subject, createdAt, updatedAt)
+          .run();
 
-      return c.json({
-        ok: true,
-        filename,
-        metadata: {
-          title: metadata.title,
-          readTime: metadata.readTime,
-          subject: metadata.subject,
-          createdAt,
-          updatedAt,
-        },
-      });
-    } catch (error) {
-      console.error("Error saving blog:", error);
-      return c.json({ error: "Failed to save blog" }, 500);
+        return c.json({
+          ok: true,
+          filename,
+          metadata: {
+            title: metadata.title,
+            readTime: metadata.readTime,
+            subject: metadata.subject,
+            createdAt,
+            updatedAt,
+          },
+        });
+      } catch (error) {
+        console.error("Error saving blog:", error);
+        return c.json({ error: "Failed to save blog" }, 500);
+      }
     }
-  })
+  )
 
   // DELETE a blog file and its metadata
   .delete("/:filename{.+\\.mdx}", async (c) => {

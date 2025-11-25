@@ -145,7 +145,14 @@ export const authMiddleware = createMiddleware<{
     if (currentSessionId) {
       await db.delete(session).where(eq(session.id, currentSessionId));
     }
-    deleteCookie(c, SESSION_COOKIE);
+
+    deleteCookie(c, SESSION_COOKIE, {
+      path: "/",
+      secure: true,
+      httpOnly: true,
+      sameSite: "Lax",
+    });
+
     c.set("user", null);
     c.set("session", null);
   });
@@ -161,7 +168,6 @@ export const authMiddleware = createMiddleware<{
       expirationTtl: CHALLENGE_TTL,
     });
 
-    console.log(`Stored challenge in KV: ${kvKey}`);
     return challengeId; // Return ID to send to frontend
   });
 
@@ -170,8 +176,6 @@ export const authMiddleware = createMiddleware<{
 
     // Retrieve from KV
     const challenge = await kv.get(kvKey, "text");
-
-    console.log(`Retrieved challenge from KV: ${kvKey} -> ${challenge ? "found" : "not found"}`);
 
     // Delete immediately after retrieval to prevent replay
     if (challenge) {

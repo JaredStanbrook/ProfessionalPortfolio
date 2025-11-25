@@ -9,6 +9,8 @@ import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { Loader2 } from "lucide-react";
 
+import { usePutBlogMutation } from "@/api/blogApi";
+
 export const Route = createFileRoute("/_authenticated/editor/")({
   component: NewBlogEditor,
 });
@@ -21,11 +23,11 @@ function NewBlogEditor() {
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
   const [filename, setFilename] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Parse content without frontmatter for preview
+  // blog mutation
+  const putBlog = usePutBlogMutation();
+
   const contentWithoutFrontmatter = useMemo(() => {
-    // Only remove frontmatter if it exists and looks correctly formatted
     return content.replace(/^---\n[\s\S]+?\n---\n/, "").trim();
   }, [content]);
 
@@ -45,7 +47,6 @@ ${content.trim()}`;
     const trimmedSubject = subject.trim();
     const trimmedContent = content.trim();
 
-    // Validation
     if (!trimmedFilename) {
       toast.error("Please enter a filename.");
       return;
@@ -57,39 +58,30 @@ ${content.trim()}`;
     }
 
     if (!trimmedTitle || !trimmedSubject) {
-      toast.error("Please fill in the Title and Subject metadata fields.");
+      toast.error("Please fill in the Title and Subject fields.");
       return;
     }
 
     if (!trimmedContent) {
-      toast.error("The blog content cannot be empty.");
+      toast.error("Content cannot be empty.");
       return;
     }
 
-    setIsLoading(true);
+    const mdxContent = generateMDX();
+
     try {
-      const mdxContent = generateMDX();
-      const response = await fetch(`/api/blog/${trimmedFilename}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "text/plain",
-        },
-        body: mdxContent,
+      await putBlog.mutateAsync({
+        filename: trimmedFilename,
+        content: mdxContent,
       });
 
-      if (response.ok) {
-        toast.success("Blog created successfully!");
-        const slug = trimmedFilename.replace(".mdx", "");
-        navigate({ to: "/blog/$slug", params: { slug } });
-      } else {
-        const error = await response.json();
-        toast.error(`Failed to save: ${error.error || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Error saving blog:", error);
-      toast.error("A network error occurred while creating the blog.");
-    } finally {
-      setIsLoading(false);
+      toast.success("Blog created successfully!");
+
+      const slug = trimmedFilename.replace(".mdx", "");
+      navigate({ to: "/blog/$slug", params: { slug } });
+    } catch (error: any) {
+      console.error("Error creating blog:", error);
+      toast.error(error?.message || "Failed to save blog.");
     }
   };
 
@@ -109,66 +101,50 @@ ${content.trim()}`;
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Editor Panel */}
         <div className="space-y-6">
-          {/* Metadata Section */}
           <div className="rounded-lg border shadow-lg p-6 space-y-4 bg-card">
             <h2 className="text-xl font-semibold border-b pb-3 mb-4">Metadata</h2>
 
             <div>
-              <Label htmlFor="filename">
-                Filename <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="filename">Filename *</Label>
               <Input
                 id="filename"
                 type="text"
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
                 placeholder="my-blog-post.mdx"
-                required
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                This will be the URL slug. Use lowercase with hyphens (e.g., my-first-post.mdx)
-              </p>
             </div>
 
             <div>
-              <Label htmlFor="title">
-                Title <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="My Amazing Blog Post"
-                required
               />
             </div>
 
             <div>
-              <Label htmlFor="readTime">
-                Read Time (minutes) <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="readTime">Read Time (minutes) *</Label>
               <Input
                 id="readTime"
                 type="number"
                 value={readTime}
-                onChange={(e) => setReadTime(parseInt(e.target.value) || 0)}
+                onChange={(e) => setReadTime(parseInt(e.target.value) || 1)}
                 min="1"
-                required
               />
             </div>
 
             <div>
-              <Label htmlFor="subject">
-                Subject <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="subject">Subject *</Label>
               <Input
                 id="subject"
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Technology, Design, etc."
-                required
               />
             </div>
           </div>
@@ -179,27 +155,14 @@ ${content.trim()}`;
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="# Write your heading here
-
-This is a paragraph with **bold** and *italic* text.
-
-## Subheading
-
-### Lists work too:
-- Item 1
-- Item 2
-
-```javascript
-// Code blocks are supported
-console.log('Hello, world!');
-```"
-              className="w-full h-96 min-h-[300px] px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background font-mono text-sm resize-y"
+              placeholder="# Write your heading here"
+              className="w-full h-96 min-h-[300px] px-3 py-2 border rounded-md bg-background font-mono text-sm"
             />
           </div>
 
           <div className="flex gap-3 pb-12">
-            <Button onClick={handleSave} disabled={isLoading} className="w-full">
-              {isLoading ? (
+            <Button onClick={handleSave} disabled={putBlog.isPending} className="w-full">
+              {putBlog.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
@@ -222,20 +185,7 @@ console.log('Hello, world!');
             </div>
           </div>
 
-          <div
-            className="markdown-content prose dark:prose-invert prose-lg max-w-none
-            prose-headings:font-bold prose-headings:border-b prose-headings:pb-1 prose-headings:mb-3
-            prose-h1:text-3xl prose-h1:mt-8
-            prose-h2:text-2xl prose-h2:mt-6
-            prose-h3:text-xl prose-h3:mt-4
-            prose-p:text-base prose-p:my-4
-            prose-a:text-primary hover:prose-a:text-primary/80
-            prose-strong:font-bold
-            prose-code:text-sm prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
-            prose-pre:bg-gray-800 prose-pre:text-white prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
-            prose-ul:list-disc prose-ul:pl-6 prose-ul:my-4
-            prose-ol:list-decimal prose-ol:pl-6 prose-ol:my-4
-          ">
+          <div className="prose prose-lg dark:prose-invert max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
               {contentWithoutFrontmatter || "*Start typing to see preview...*"}
             </ReactMarkdown>

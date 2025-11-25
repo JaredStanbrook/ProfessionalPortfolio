@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -7,263 +9,307 @@ import {
   verifyAuthenticationResponse,
 } from "@simplewebauthn/server";
 import { isoBase64URL, isoUint8Array } from "@simplewebauthn/server/helpers";
-import {
-  dbMiddleware,
-  authMiddleware,
-  type CustomContext,
-  csrfMiddleware,
-  getCsrfToken,
-} from "../db";
+import { dbMiddleware, authMiddleware, type CustomContext, getCsrfToken } from "../db";
 import { user } from "../db/schema/user";
 import { authenticator } from "../db/schema/authenticator";
+
+// --- Zod Schemas ---
+
+// 1. Shared Email Schema (Keep this strict)
+const emailSchema = z.object({
+  email: z.string().email("Invalid email format").min(1, "Email is required"),
+});
+
+/**
+ * LOOSE SCHEMAS
+ * We only validate that 'response' has the absolute minimum fields
+ * required for us to pass it to simplewebauthn without crashing.
+ */
+
+// 2. Registration
+const registerVerifySchema = z.object({
+  email: z.string().email(),
+  challengeId: z.string().min(1, "Challenge ID is missing"),
+  // Allow 'response' to be almost anything, as long as it has an ID
+  response: z
+    .object({
+      id: z.string(),
+      // .passthrough() allows extra fields we don't know about yet
+    })
+    .passthrough(),
+});
+
+// 3. Login
+const loginVerifySchema = z.object({
+  email: z.string().email(),
+  challengeId: z.string().min(1, "Challenge ID is missing"),
+  response: z
+    .object({
+      id: z.string(),
+    })
+    .passthrough(),
+});
+// --- Routes ---
 
 export const authRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
   .use("*", dbMiddleware)
   .use("*", authMiddleware)
+
+  // CSRF Token
   .get("/csrf-token", (c) => {
     return c.json({ token: getCsrfToken(c) });
   })
-  /*.use("*", csrfMiddleware)*/
+
   /**
    * 1. REGISTRATION: Get Options
    */
-  .post("/register/options", async (c) => {
-    const { email } = await c.req.json<{ email: string }>();
-    if (!email) return c.json({ error: "Email required" }, 400);
+  .post(
+    "/register/options",
+    zValidator("json", emailSchema, (result, c) => {
+      if (!result.success) {
+        return c.json({ error: result.error.issues[0].message }, 400);
+      }
+    }),
+    async (c) => {
+      try {
+        const { email } = c.req.valid("json");
 
-    // --- START: Hardcoded Email Check for Access Control ---
+        // --- Access Control ---
+        if (email.toLowerCase() !== c.env.ALLOWED_EMAIL.toLowerCase()) {
+          console.warn(`Blocked registration attempt: ${email}`);
+          return c.json({ error: "Registration is currently invite-only." }, 403);
+        }
 
-    if (email.toLowerCase() !== c.env.ALLOWED_EMAIL.toLowerCase()) {
-      // Return a generic error to avoid leaking information about which emails are valid
-      // or simply reject with a specific message for testing/development purposes.
-      console.warn(`Attempted registration with restricted email: ${email}`);
-      return c.json({ error: "Registration is invite-only." }, 403);
+        const db = c.get("db");
+
+        const existingUser = await db.select().from(user).where(eq(user.email, email)).get();
+        if (existingUser) {
+          return c.json({ error: "An account with this email already exists." }, 409);
+        }
+
+        const userID = crypto.randomUUID();
+        const options = await generateRegistrationOptions({
+          rpName: c.env.RP_NAME,
+          rpID: c.env.RP_ID,
+          userID: isoUint8Array.fromUTF8String(userID),
+          userName: email,
+          attestationType: "none",
+          excludeCredentials: [],
+          authenticatorSelection: {
+            residentKey: "preferred",
+            userVerification: "preferred",
+          },
+        });
+
+        const challengeId = await c.get("setChallenge")(options.challenge);
+
+        return c.json({ ...options, challengeId });
+      } catch (e) {
+        console.error("Register Options Error:", e);
+        return c.json({ error: "Failed to generate registration options." }, 500);
+      }
     }
-    // --- END: Hardcoded Email Check ---
-    const db = c.get("db");
-
-    // Check if user exists, or prepare a new ID
-    const existingUser = await db.select().from(user).where(eq(user.email, email)).get();
-    if (existingUser) {
-      return c.json({ error: "This email is already registered" }, 409);
-    }
-
-    const userID = crypto.randomUUID();
-    const options = await generateRegistrationOptions({
-      rpName: c.env.RP_NAME,
-      rpID: c.env.RP_ID,
-      userID: isoUint8Array.fromUTF8String(userID),
-      userName: email,
-      attestationType: "none",
-      excludeCredentials: [],
-      authenticatorSelection: {
-        residentKey: "preferred",
-        userVerification: "preferred",
-      },
-    });
-
-    const challengeId = await c.get("setChallenge")(options.challenge);
-
-    return c.json({
-      ...options,
-      challengeId,
-    });
-  })
+  )
 
   /**
    * 2. REGISTRATION: Verify
    */
-  .post("/register/verify", async (c) => {
-    try {
-      const { email, response, challengeId } = await c.req.json<{
-        email: string;
-        response: any;
-        challengeId: string;
-      }>();
+  .post(
+    "/register/verify",
+    zValidator("json", registerVerifySchema, (result, c) => {
+      if (!result.success) return c.json({ error: "Invalid request format" }, 400);
+    }),
+    async (c) => {
+      try {
+        // Data is guaranteed to be typed correctly here
+        const { email, response, challengeId } = c.req.valid("json");
 
-      if (!challengeId) {
-        return c.json({ error: "Challenge ID required" }, 400);
-      }
-
-      // Retrieve challenge from KV using the ID
-      const challenge = await c.get("getChallenge")(challengeId);
-
-      if (!challenge) {
-        return c.json({ error: "Challenge expired or not found" }, 400);
-      }
-
-      const verification = await verifyRegistrationResponse({
-        response,
-        expectedChallenge: challenge,
-        expectedOrigin: c.env.ORIGIN,
-        expectedRPID: c.env.RP_ID,
-      });
-
-      if (verification.verified && verification.registrationInfo) {
-        // FIX: Destructure the new 'credential' object
-        const { credential } = verification.registrationInfo;
-        const { id, publicKey, counter, transports } = credential;
-
-        const db = c.get("db");
-
-        // 1. Upsert User (Create if new)
-        let userId = "";
-        const existingUser = await db.select().from(user).where(eq(user.email, email)).get();
-
-        if (!existingUser) {
-          userId = crypto.randomUUID();
-          await db.insert(user).values({ id: userId, email });
-        } else {
-          userId = existingUser.id;
+        const challenge = await c.get("getChallenge")(challengeId);
+        if (!challenge) {
+          return c.json({ error: "Registration session expired. Please try again." }, 400);
         }
 
-        // 2. Save Authenticator
-        await db.insert(authenticator).values({
-          id: crypto.randomUUID(),
-          userId: userId,
-          credentialId: id,
-          credentialPublicKey: isoBase64URL.fromBuffer(publicKey),
-          counter: counter,
-          transports: JSON.stringify(transports || []),
+        const verification = await verifyRegistrationResponse({
+          response: response as any,
+          expectedChallenge: challenge,
+          expectedOrigin: c.env.ORIGIN,
+          expectedRPID: c.env.RP_ID,
         });
 
-        // 3. Log them in
-        await c.get("setSession")(userId);
+        if (verification.verified && verification.registrationInfo) {
+          const { credential } = verification.registrationInfo;
+          const { id, publicKey, counter, transports } = credential;
 
-        return c.json({ verified: true });
+          const db = c.get("db");
+
+          let userId = "";
+          const existingUser = await db.select().from(user).where(eq(user.email, email)).get();
+
+          if (!existingUser) {
+            userId = crypto.randomUUID();
+            await db.insert(user).values({ id: userId, email });
+          } else {
+            userId = existingUser.id;
+          }
+
+          await db.insert(authenticator).values({
+            id: crypto.randomUUID(),
+            userId: userId,
+            credentialId: id,
+            credentialPublicKey: isoBase64URL.fromBuffer(publicKey),
+            counter: counter,
+            transports: JSON.stringify(transports || []),
+          });
+
+          await c.get("setSession")(userId);
+
+          return c.json({ verified: true });
+        }
+
+        return c.json({ error: "WebAuthn verification failed." }, 400);
+      } catch (error: any) {
+        console.error("REGISTRATION VERIFICATION FAILED:", error);
+        return c.json({ error: "Registration failed due to a server error." }, 500);
       }
-
-      return c.json({ verified: false }, 400);
-    } catch (error: any) {
-      // 🚨 THIS LOG WILL REVEAL THE ISSUE
-      console.error("VERIFICATION FAILED:", error);
-      return c.json({ error: error.message }, 500);
     }
-  })
+  )
+
   /**
    * 3. LOGIN: Get Options
    */
-  .post("/login/options", async (c) => {
-    const { email } = await c.req.json<{ email: string }>();
+  .post(
+    "/login/options",
+    zValidator("json", emailSchema, (result, c) => {
+      if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
+    }),
+    async (c) => {
+      try {
+        const { email } = c.req.valid("json");
+        const db = c.get("db");
 
-    const db = c.get("db");
-    const foundUser = await db.select().from(user).where(eq(user.email, email)).get();
+        const foundUser = await db.select().from(user).where(eq(user.email, email)).get();
+        if (!foundUser) {
+          return c.json({ error: "No account found with this email." }, 404);
+        }
 
-    if (!foundUser) return c.json({ error: "User not found" }, 404);
+        const userAuths = await db
+          .select()
+          .from(authenticator)
+          .where(eq(authenticator.userId, foundUser.id))
+          .all();
 
-    // Get user's authenticators
-    const userAuths = await db
-      .select()
-      .from(authenticator)
-      .where(eq(authenticator.userId, foundUser.id))
-      .all();
+        if (userAuths.length === 0) {
+          return c.json({ error: "No passkeys registered for this account." }, 400);
+        }
 
-    const options = await generateAuthenticationOptions({
-      rpID: c.env.RP_ID,
-      allowCredentials: userAuths.map((auth) => ({
-        id: auth.credentialId,
-        transports: auth.transports ? JSON.parse(auth.transports) : undefined,
-      })),
-      userVerification: "preferred",
-    });
+        const options = await generateAuthenticationOptions({
+          rpID: c.env.RP_ID,
+          allowCredentials: userAuths.map((auth) => ({
+            id: auth.credentialId,
+            transports: auth.transports ? JSON.parse(auth.transports) : undefined,
+          })),
+          userVerification: "preferred",
+        });
 
-    // Save challenge
-    const challengeId = await c.get("setChallenge")(options.challenge);
+        const challengeId = await c.get("setChallenge")(options.challenge);
 
-    return c.json({
-      ...options,
-      challengeId, // Frontend needs this
-    });
-  })
+        return c.json({ ...options, challengeId });
+      } catch (e) {
+        console.error("Login Options Error:", e);
+        return c.json({ error: "Failed to generate login options." }, 500);
+      }
+    }
+  )
+
   /**
    * 4. LOGIN: Verify
    */
-  .post("/login/verify", async (c) => {
-    const { email, response, challengeId } = await c.req.json<{
-      email: string;
-      response: any;
-      challengeId: string;
-    }>();
+  .post(
+    "/login/verify",
+    zValidator("json", loginVerifySchema, (result, c) => {
+      if (!result.success) return c.json({ error: "Invalid request format" }, 400);
+    }),
+    async (c) => {
+      try {
+        const { email, response, challengeId } = c.req.valid("json");
 
-    if (!challengeId) {
-      return c.json({ error: "Challenge ID required" }, 400);
+        const challenge = await c.get("getChallenge")(challengeId);
+        if (!challenge) {
+          return c.json({ error: "Login session expired. Please try again." }, 400);
+        }
+
+        const db = c.get("db");
+        const foundUser = await db.select().from(user).where(eq(user.email, email)).get();
+
+        if (!foundUser) {
+          return c.json({ error: "User not found." }, 404);
+        }
+
+        const auth = await db
+          .select()
+          .from(authenticator)
+          .where(eq(authenticator.credentialId, response.id))
+          .get();
+
+        if (!auth) {
+          return c.json({ error: "Passkey not recognized." }, 400);
+        }
+
+        const verification = await verifyAuthenticationResponse({
+          response: response as any,
+          expectedChallenge: challenge,
+          expectedOrigin: c.env.ORIGIN,
+          expectedRPID: c.env.RP_ID,
+          credential: {
+            id: auth.credentialId,
+            publicKey: isoBase64URL.toBuffer(auth.credentialPublicKey),
+            counter: auth.counter,
+            transports: auth.transports ? JSON.parse(auth.transports) : undefined,
+          },
+        });
+
+        if (verification.verified) {
+          const { authenticationInfo } = verification;
+
+          await db
+            .update(authenticator)
+            .set({ counter: authenticationInfo.newCounter })
+            .where(eq(authenticator.id, auth.id));
+
+          await c.get("setSession")(foundUser.id);
+
+          return c.json({ verified: true });
+        }
+
+        return c.json({ error: "Verification failed." }, 400);
+      } catch (err) {
+        console.error("Login verification error:", err);
+        return c.json({ error: "Login failed due to a server error." }, 500);
+      }
     }
+  )
 
-    // Retrieve challenge from KV
-    const challenge = await c.get("getChallenge")(challengeId);
-
-    if (!challenge) {
-      return c.json({ error: "Challenge expired or not found" }, 400);
-    }
-    const db = c.get("db");
-    const foundUser = await db.select().from(user).where(eq(user.email, email)).get();
-
-    if (!foundUser) return c.json({ error: "User not found" }, 400);
-
-    // Fetch the specific authenticator used
-    const auth = await db
-      .select()
-      .from(authenticator)
-      .where(eq(authenticator.credentialId, response.id))
-      .get();
-
-    if (!auth) return c.json({ error: "Authenticator not found" }, 400);
-
-    const verification = await verifyAuthenticationResponse({
-      response,
-      expectedChallenge: challenge,
-      expectedOrigin: c.env.ORIGIN,
-      expectedRPID: c.env.RP_ID,
-      credential: {
-        id: auth.credentialId,
-        publicKey: isoBase64URL.toBuffer(auth.credentialPublicKey),
-        counter: auth.counter,
-        transports: auth.transports ? JSON.parse(auth.transports) : undefined,
-      },
-    });
-
-    if (verification.verified) {
-      const { authenticationInfo } = verification;
-
-      // Update counter to prevent replay attacks
-      await db
-        .update(authenticator)
-        .set({ counter: authenticationInfo.newCounter })
-        .where(eq(authenticator.id, auth.id));
-
-      // Create Session
-      await c.get("setSession")(foundUser.id);
-
-      return c.json({ verified: true });
-    }
-
-    return c.json({ verified: false }, 400);
-  })
   /**
-   * 5. GET Current User / Session Check (/me)
+   * 5. GET Current User
    */
   .get("/me", (c) => {
-    // The authMiddleware (running globally) checks the session cookie
-    // and populates c.get("user") if valid.
     const user = c.get("user");
     if (!user) {
-      // If no session is found, return 401 Unauthorized
-      // The frontend should interpret this as "logged out"
-      return c.json({ error: "Unauthorized" }, 401);
+      return c.json({ error: "You are not logged in." }, 401);
     }
-
-    // Return the user object (safe to expose, usually just ID and Email)
     return c.json(user);
   })
+
   /**
-   * 6. LOGOUT (Destroy Session)
+   * 6. LOGOUT
    */
-  .post("/logout", (c) => {
-    const destroySession = c.get("destroySession");
-
-    // The middleware provides this helper function
-    destroySession();
-
-    // Return a simple success message
-    return c.json({ success: true });
+  .post("/logout", async (c) => {
+    try {
+      const destroySession = c.get("destroySession");
+      await destroySession();
+      return c.json({ success: true });
+    } catch (e) {
+      console.error("Logout error", e);
+      return c.json({ error: "Failed to log out." }, 500);
+    }
   });

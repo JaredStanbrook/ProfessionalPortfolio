@@ -1,71 +1,26 @@
 // routes/blog/$slug.tsx
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { useQuery } from "@tanstack/react-query";
 import { getUserQueryOptions } from "@/api/authApi";
+import { getBlogContentQueryOptions } from "@/api/blogApi";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/blog/$slug")({
   component: BlogView,
 });
 
-interface BlogData {
-  content: string;
-  metadata: {
-    title: string;
-    readTime: number;
-    subject: string;
-    createdAt: string;
-    updatedAt: string;
-  };
-}
-
 function BlogView() {
   const { slug } = Route.useParams();
+  const filename = `${slug}.mdx`;
   const navigate = useNavigate();
-  const {
-    isPending: isUserPending,
-    error: userError,
-    data: userData,
-  } = useQuery(getUserQueryOptions);
-  const [blog, setBlog] = useState<BlogData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchBlog = async () => {
-      setIsLoading(true);
-      setError(null);
+  // Auth query
+  const { data: userData } = useQuery(getUserQueryOptions);
 
-      try {
-        // Add .mdx extension back for API call
-        const filename = `${slug}.mdx`;
-        const response = await fetch(`/api/blog/${filename}`);
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError("Blog post not found");
-          } else {
-            setError("Failed to load blog post");
-          }
-          return;
-        }
-
-        const data = await response.json();
-        setBlog(data);
-      } catch (err) {
-        console.error("Error fetching blog:", err);
-        setError("Failed to load blog post");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchBlog();
-  }, [slug]);
+  const { data: blog, isPending, error } = useQuery(getBlogContentQueryOptions(filename));
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -76,7 +31,8 @@ function BlogView() {
     });
   };
 
-  if (isLoading) {
+  // Loading skeleton
+  if (isPending) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="animate-pulse">
@@ -92,11 +48,14 @@ function BlogView() {
     );
   }
 
+  // Error or no blog found
   if (error || !blog) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-4">{error || "Blog not found"}</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-4">
+            {error?.message || "Blog not found"}
+          </h1>
           <Button variant="outline" onClick={() => navigate({ to: "/" })}>
             <span className="text-base">Back</span>
             <span className="text-xs ml-1 text-foreground/75">Back</span>
@@ -115,6 +74,7 @@ function BlogView() {
           <span className="text-xs ml-1 text-foreground/75">Back</span>
           <span className="text-tiny ml-1 text-foreground/50">Back</span>
         </Button>
+
         {userData && (
           <Button
             variant="outline"
@@ -123,11 +83,10 @@ function BlogView() {
           </Button>
         )}
       </div>
+
       <div className="min-h-screen bg-background">
-        {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-background via-background to-muted/20">
           <div className="max-w-4xl mx-auto px-6 py-16 lg:py-24">
-            {/* Meta Information */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
                 {blog.metadata.subject}
@@ -142,6 +101,7 @@ function BlogView() {
               <span className="text-sm text-muted-foreground">
                 {formatDate(blog.metadata.createdAt)}
               </span>
+
               {blog.metadata.createdAt !== blog.metadata.updatedAt && (
                 <>
                   <span className="text-muted-foreground text-sm">•</span>
@@ -152,23 +112,21 @@ function BlogView() {
               )}
             </div>
 
-            {/* Title */}
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-8 leading-tight">
               {blog.metadata.title}
             </h1>
-            {/* Content */}
+
             <article
               className="prose prose-lg dark:prose-invert max-w-none
-          prose-headings:text-foreground 
-          prose-p:text-muted-foreground
-          prose-a:text-primary hover:prose-a:text-primary/80
-          prose-strong:text-foreground
-          prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-          prose-pre:bg-muted prose-pre:border prose-pre:border-border
-          prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
-          prose-img:rounded-lg prose-img:shadow-lg
-          prose-hr:border-border
-        ">
+                prose-headings:text-foreground 
+                prose-p:text-muted-foreground
+                prose-a:text-primary hover:prose-a:text-primary/80
+                prose-strong:text-foreground
+                prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                prose-pre:bg-muted prose-pre:border prose-pre:border-border
+                prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
+                prose-img:rounded-lg prose-img:shadow-lg
+                prose-hr:border-border">
               <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                 {blog.content}
               </ReactMarkdown>
