@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type HighlightCardSize = "small" | "wide" | "long" | "big";
+export type HighlightCardSize = "small" | "wide" | "long" | "big";
 
 interface HighlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: HighlightCardSize;

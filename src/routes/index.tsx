@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CardContent } from "@/components/ui/card";
-import { HighlightCard } from "@/components/ui/highlight-card";
+import { HighlightCard, type HighlightCardSize } from "@/components/ui/highlight-card";
+import Typewriter from "@/components/typewriter";
 
 export const Route = createFileRoute("/")({
   component: Homepage,
@@ -60,7 +61,10 @@ function Homepage() {
         const response = await fetch("/api/blog");
         if (response.ok) {
           const data = await response.json();
-          setBlogs(data.blogs || []);
+          const sortedBlogs = [...data.blogs].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          setBlogs(sortedBlogs || []);
         }
       } catch (error) {
         console.error("Error fetching blogs:", error);
@@ -250,7 +254,9 @@ function Homepage() {
             <span className="hidden md:inline">
               {cursorState.isClose ? "Learn more about me." : "I'm Jared"}
             </span>
-            <span className="inline md:hidden">Tap me to learn more about Jared.</span>
+            <div className="md:hidden inline">
+              <Typewriter />
+            </div>
           </span>
         </div>
         <hr className="w-full border-t-2 border-foreground opacity-30 self-center" />
@@ -288,29 +294,41 @@ function Homepage() {
           </div>
         ) : (
           <div className="grid gap-6 grid-cols-1 md:grid-cols-3 auto-rows-fr">
-            {blogs.map((blog, index) => (
-              <HighlightCard
-                key={blog.filename}
-                size={index === 1 ? "big" : "small"}
-                onClick={() => handleBlogClick(blog.filename)}
-                tabIndex={index}
-                role="button">
-                <CardContent className="p-4 flex flex-col justify-between h-full">
-                  <div>
-                    <span className="inline-block text-xs mb-2">
-                      <span className="py-1 px-2 rounded-full bg-foreground text-background font-semibold">
-                        {blog.subject}
+            {blogs.map((blog) => {
+              let size: HighlightCardSize;
+
+              if (blog.readTime >= 15) size = "big";
+              else if (blog.readTime >= 4) size = "long";
+              else if (blog.readTime >= 3) size = "wide";
+              else size = "small";
+
+              return (
+                <HighlightCard
+                  key={blog.filename}
+                  size={size}
+                  onClick={() => handleBlogClick(blog.filename)}
+                  tabIndex={0}
+                  role="button">
+                  <CardContent className="p-4 flex flex-col justify-between h-full">
+                    <div>
+                      <span className="inline-block text-xs mb-2">
+                        <span className="py-1 px-2 rounded-full bg-foreground text-background font-semibold">
+                          {blog.subject}
+                        </span>
+                        <span className="ml-1 text-muted-foreground align-middle">
+                          • {blog.readTime} min read
+                        </span>
                       </span>
-                      <span className="ml-1 text-muted-foreground align-middle">
-                        • {blog.readTime} min read
-                      </span>
-                    </span>
-                    <h2 className="text-lg font-semibold mb-2">{blog.title}</h2>
-                  </div>
-                  <div className="text-sm mt-4">Jared Stanbrook • {formatDate(blog.createdAt)}</div>
-                </CardContent>
-              </HighlightCard>
-            ))}
+                      <h2 className="text-lg font-semibold mb-2">{blog.title}</h2>
+                    </div>
+
+                    <div className="text-sm mt-4">
+                      Jared Stanbrook • {formatDate(blog.createdAt)}
+                    </div>
+                  </CardContent>
+                </HighlightCard>
+              );
+            })}
           </div>
         )}
       </main>
