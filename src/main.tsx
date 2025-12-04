@@ -28,7 +28,6 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// 2. Create an Inner Component to bridge React Query -> Router
 function InnerApp() {
   // This hook runs globally and keeps 'user' state fresh
   const { data: user, isLoading } = useQuery(getUserQueryOptions);

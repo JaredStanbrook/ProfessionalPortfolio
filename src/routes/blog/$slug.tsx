@@ -75,7 +75,9 @@ function BlogView() {
           <span className="text-tiny ml-1 text-foreground/50">Back</span>
         </Button>
 
-        {userData && (
+        {(userData?.id === blog.metadata.authorId ||
+          userData?.roles?.includes("admin") ||
+          userData?.roles?.includes("editor")) && (
           <Button
             variant="outline"
             onClick={() => navigate({ to: "/editor/$slug", params: { slug } })}>
@@ -85,7 +87,7 @@ function BlogView() {
       </div>
 
       <div className="min-h-screen bg-background">
-        <section className="relative bg-gradient-to-br from-background via-background to-muted/20">
+        <section className="relative bg-linear-to-br from-background via-background to-muted/20">
           <div className="max-w-4xl mx-auto px-6 py-16 lg:py-24">
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
@@ -96,7 +98,7 @@ function BlogView() {
                 {blog.metadata.readTime} min read
               </span>
               <span className="text-muted-foreground text-sm">•</span>
-              <span className="text-sm text-muted-foreground">Jared Stanbrook</span>
+              <span className="text-sm text-muted-foreground">{blog.metadata.authorName}</span>
               <span className="text-muted-foreground text-sm">•</span>
               <span className="text-sm text-muted-foreground">
                 {formatDate(blog.metadata.createdAt)}

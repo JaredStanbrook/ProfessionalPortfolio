@@ -3,12 +3,15 @@ import { logger } from "hono/logger";
 import { cors } from "hono/cors";
 
 import { githubRoute } from "./routes/github";
-import { authRoute } from "./routes/auth";
+import { auth as authRoute } from "./routes/auth";
 
 import { HTTPException } from "hono/http-exception";
 import { blogRoute } from "./routes/blog";
+import type { AppEnv } from "./types";
+import { configMiddleware } from "./middleware/config.middleware";
+import { dbMiddleware } from "./middleware/db.middleware";
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<AppEnv>()
   .use("*", logger())
   .use(
     cors({
@@ -19,6 +22,8 @@ const app = new Hono<{ Bindings: Env }>()
     })
   )
   .basePath("/api")
+  .use("*", configMiddleware)
+  .use("*", dbMiddleware)
   .route("/auth", authRoute)
   .route("/github", githubRoute)
   .route("/blog", blogRoute)
@@ -26,12 +31,12 @@ const app = new Hono<{ Bindings: Env }>()
     return c.env.ASSETS.fetch(c.req.raw);
   });
 
-app.onError((err) => {
+app.onError((err, c) => {
   if (err instanceof HTTPException) {
-    return err.getResponse();
-  } else {
-    return new Response("Internal Server Error", { status: 500 });
+    return c.json({ error: err.message }, err.status);
   }
+  console.error(err);
+  return c.json({ error: "Internal Server Error" }, 500);
 });
 
 app.notFound((c) => {

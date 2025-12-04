@@ -10,7 +10,7 @@ import { toast, Toaster } from "sonner";
 import "../index.css";
 import { Button } from "@/components/ui/button";
 import { useLogoutMutation, getUserQueryOptions } from "@/api/authApi";
-import type { User } from "@server/db/schema/user";
+import type { SafeUser } from "@server/schema/auth.schema";
 
 // --- Configuration ---
 type NavigationItem = {
@@ -34,7 +34,7 @@ const authenticatedMenu: NavigationItem[] = [
 interface MyRouterContext {
   queryClient: QueryClient;
   auth: {
-    user: User | null;
+    user: SafeUser | null;
     isAuthenticated: boolean;
     isLoading: boolean;
   };

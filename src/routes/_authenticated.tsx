@@ -1,24 +1,19 @@
+// src/routes/_authenticated.tsx
 import { getUserQueryOptions, logoutUser } from "@/api/authApi";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async ({ context, location }) => {
     const queryClient = context.queryClient;
-
     try {
-      const data = await queryClient.ensureQueryData(getUserQueryOptions);
-      return { user: data };
+      await queryClient.ensureQueryData(getUserQueryOptions);
     } catch (err) {
-      // Remove stale user data
       queryClient.removeQueries(getUserQueryOptions);
       await logoutUser();
-
-      // Force redirect to login
       throw redirect({
         to: "/login",
-        search: {
-          redirect: location.href,
-        },
+        search: { redirect: location.href },
       });
     }
   },
@@ -26,5 +21,6 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+  useSuspenseQuery(getUserQueryOptions);
   return <Outlet />;
 }

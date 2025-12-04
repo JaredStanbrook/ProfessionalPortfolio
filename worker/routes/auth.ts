@@ -1,315 +1,358 @@
+// worker/routes/auth.ts
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { requireRole } from "../middleware/guard.middleware";
+import { authMiddleware } from "../middleware/auth.middleware.ts";
 import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-} from "@simplewebauthn/server";
-import { isoBase64URL, isoUint8Array } from "@simplewebauthn/server/helpers";
-import { dbMiddleware, authMiddleware, type CustomContext, getCsrfToken } from "../db";
-import { user } from "../db/schema/user";
-import { authenticator } from "../db/schema/authenticator";
+  loginUserSchema,
+  registerUserSchema,
+  registerPasskeyOptionsSchema,
+  registerPasskeyVerifySchema,
+  loginPasskeyOptionsSchema,
+  loginPasskeyVerifySchema,
+  safeUserSchema,
+  updateUserProfileSchema,
+  changePasswordRequestSchema,
+  changePinRequestSchema,
+} from "../schema/auth.schema";
+import type { AppEnv } from "../types";
+import { setCookie } from "hono/cookie";
 
-// --- Zod Schemas ---
-
-// 1. Shared Email Schema (Keep this strict)
-const emailSchema = z.object({
-  email: z.string().email("Invalid email format").min(1, "Email is required"),
-});
-
-/**
- * LOOSE SCHEMAS
- * We only validate that 'response' has the absolute minimum fields
- * required for us to pass it to simplewebauthn without crashing.
- */
-
-// 2. Registration
-const registerVerifySchema = z.object({
-  email: z.string().email(),
-  challengeId: z.string().min(1, "Challenge ID is missing"),
-  // Allow 'response' to be almost anything, as long as it has an ID
-  response: z
-    .object({
-      id: z.string(),
-      // .passthrough() allows extra fields we don't know about yet
-    })
-    .passthrough(),
-});
-
-// 3. Login
-const loginVerifySchema = z.object({
-  email: z.string().email(),
-  challengeId: z.string().min(1, "Challenge ID is missing"),
-  response: z
-    .object({
-      id: z.string(),
-    })
-    .passthrough(),
-});
 // --- Routes ---
-
-export const authRoute = new Hono<{ Bindings: Env; Variables: CustomContext }>()
-  .use("*", dbMiddleware)
-  .use("*", authMiddleware)
-
-  // CSRF Token
-  .get("/csrf-token", (c) => {
-    return c.json({ token: getCsrfToken(c) });
+export const passkey = new Hono<AppEnv>()
+  .use("*", async (c, next) => {
+    // Middleware check
+    const isMethodEnabled = c.get("isMethodEnabled");
+    if (!isMethodEnabled("passkey")) {
+      return c.json({ error: "Passkey auth is not enabled" }, 404);
+    }
+    await next();
   })
 
-  /**
-   * 1. REGISTRATION: Get Options
-   */
-  .post(
-    "/register/options",
-    zValidator("json", emailSchema, (result, c) => {
-      if (!result.success) {
-        return c.json({ error: result.error.issues[0].message }, 400);
-      }
-    }),
-    async (c) => {
-      try {
-        const { email } = c.req.valid("json");
+  // 1. Register Options
+  .post("/register/options", zValidator("json", registerPasskeyOptionsSchema), async (c) => {
+    try {
+      const { email } = c.req.valid("json");
+      const { auth } = c.var;
 
-        // --- Access Control ---
-        if (email.toLowerCase() !== c.env.ALLOWED_EMAIL.toLowerCase()) {
-          console.warn(`Blocked registration attempt: ${email}`);
-          return c.json({ error: "Registration is currently invite-only." }, 403);
-        }
+      const result = await auth.generatePasskeyRegistrationOptions(email);
 
-        const db = c.get("db");
-
-        const existingUser = await db.select().from(user).where(eq(user.email, email)).get();
-        if (existingUser) {
-          return c.json({ error: "An account with this email already exists." }, 409);
-        }
-
-        const userID = crypto.randomUUID();
-        const options = await generateRegistrationOptions({
-          rpName: c.env.RP_NAME,
-          rpID: c.env.RP_ID,
-          userID: isoUint8Array.fromUTF8String(userID),
-          userName: email,
-          attestationType: "none",
-          excludeCredentials: [],
-          authenticatorSelection: {
-            residentKey: "preferred",
-            userVerification: "preferred",
-          },
-        });
-
-        const challengeId = await c.get("setChallenge")(options.challenge);
-
-        return c.json({ ...options, challengeId });
-      } catch (e) {
-        console.error("Register Options Error:", e);
-        return c.json({ error: "Failed to generate registration options." }, 500);
-      }
+      // Return options directly, challengeId is included in result
+      return c.json({ ...result.options, challengeId: result.challengeId });
+    } catch (e: any) {
+      return c.json({ error: e.message || "Registration initialization failed" }, 400);
     }
-  )
+  })
 
-  /**
-   * 2. REGISTRATION: Verify
-   */
+  // 2. Register Verify
+  .post("/register/verify", zValidator("json", registerPasskeyVerifySchema), async (c) => {
+    try {
+      const { email, response, challengeId } = c.req.valid("json");
+      const { auth } = c.var;
+
+      const { verified, sessionToken } = await auth.verifyPasskeyRegistration(
+        email,
+        response as any, // Cast to 'any' here as Zod has already validated structure
+        challengeId
+      );
+
+      // Set Cookie
+      const cookie = auth.createSessionCookie(sessionToken);
+      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+
+      return c.json({ verified });
+    } catch (e: any) {
+      console.error("Register Verify Error:", e);
+      return c.json({ error: e.message || "Registration verification failed" }, 400);
+    }
+  })
+
+  // 3. Login Options
+  .post("/login/options", zValidator("json", loginPasskeyOptionsSchema), async (c) => {
+    try {
+      const { email } = c.req.valid("json");
+      const { auth } = c.var;
+
+      const result = await auth.generatePasskeyLoginOptions(email);
+
+      return c.json({ ...result.options, challengeId: result.challengeId });
+    } catch (e: any) {
+      return c.json({ error: e.message || "Login initialization failed" }, 400);
+    }
+  })
+
+  // 4. Login Verify
+  .post("/login/verify", zValidator("json", loginPasskeyVerifySchema), async (c) => {
+    try {
+      const { email, response, challengeId } = c.req.valid("json");
+      const { auth } = c.var;
+
+      const { verified, sessionToken } = await auth.verifyPasskeyLogin(
+        email,
+        response as any,
+        challengeId
+      );
+
+      // Set Cookie
+      const cookie = auth.createSessionCookie(sessionToken);
+      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+
+      return c.json({ verified });
+    } catch (e: any) {
+      console.error("Login Verify Error:", e);
+      return c.json({ error: e.message || "Login verification failed" }, 400);
+    }
+  });
+
+/**
+ * TOTP setup
+ */
+export const totp = new Hono<AppEnv>().use("*", async (c, next) => {
+  const isMethodEnabled = c.get("isMethodEnabled");
+  if (!isMethodEnabled("totp")) {
+    return c.json({ error: "TOTP is not enabled" }, 404);
+  }
+  await next();
+});
+/*
+  .post("/setup", authMiddleware, async (c) => {
+    const { auth } = c.var;
+    const db = c.get("db");
+    const userId = auth.user?.id;
+
+    try {
+      //const result = await authService.setupTotp(db, userId); TODO setup totp
+      //return c.json(result);
+    } catch (error: any) {
+      return c.json({ error: error.message }, 400);
+    }
+  });
+
+  .post("/verify", authMiddleware, zValidator("json", verifyTotpSchema), async (c) => {
+    const db = c.get("db");
+    const userId = c.get("userId");
+    const { code } = c.req.valid("json");
+
+    try {
+      await authService.verifyTotp(db, userId, code);
+      return c.json({ message: "TOTP enabled successfully" });
+    } catch (error: any) {
+      return c.json({ error: error.message }, 400);
+    }
+  });
+
+  .delete("/disable", authMiddleware, async (c) => {
+    const db = c.get("db");
+    const userId = c.get("userId");
+
+    try {
+      await authService.disableTotp(db, userId);
+      return c.json({ message: "TOTP disabled successfully" });
+    } catch (error: any) {
+      return c.json({ error: error.message }, 400);
+    }
+  })
+}
+*/
+export const auth = new Hono<AppEnv>()
+  .use("*", authMiddleware)
+  .get("/methods", (c) => {
+    const { authConfig } = c.var;
+
+    // Filter out any role listed in 'restricted'
+    const publicRoles = authConfig.roles.available.filter(
+      (role) => !authConfig.roles.restricted.includes(role)
+    );
+
+    return c.json({
+      methods: Array.from(authConfig.methods),
+      requireEmailVerification: authConfig.security.requireEmailVerification,
+      requirePhoneVerification: authConfig.security.requirePhoneVerification,
+
+      roles: publicRoles,
+      defaultRole: authConfig.roles.default,
+    });
+  })
+  .route("/passkey", passkey)
+  .route("/totp", totp)
   .post(
-    "/register/verify",
-    zValidator("json", registerVerifySchema, (result, c) => {
-      if (!result.success) return c.json({ error: "Invalid request format" }, 400);
-    }),
+    "/register",
+    //rateLimitMiddleware(5, 60000),
+    zValidator("json", registerUserSchema),
     async (c) => {
+      const { auth } = c.var;
+      const body = c.req.valid("json");
+
       try {
-        // Data is guaranteed to be typed correctly here
-        const { email, response, challengeId } = c.req.valid("json");
-
-        const challenge = await c.get("getChallenge")(challengeId);
-        if (!challenge) {
-          return c.json({ error: "Registration session expired. Please try again." }, 400);
-        }
-
-        const verification = await verifyRegistrationResponse({
-          response: response as any,
-          expectedChallenge: challenge,
-          expectedOrigin: c.env.ORIGIN,
-          expectedRPID: c.env.RP_ID,
-        });
-
-        if (verification.verified && verification.registrationInfo) {
-          const { credential } = verification.registrationInfo;
-          const { id, publicKey, counter, transports } = credential;
-
-          const db = c.get("db");
-
-          let userId = "";
-          const existingUser = await db.select().from(user).where(eq(user.email, email)).get();
-
-          if (!existingUser) {
-            userId = crypto.randomUUID();
-            await db.insert(user).values({ id: userId, email });
-          } else {
-            userId = existingUser.id;
-          }
-
-          await db.insert(authenticator).values({
-            id: crypto.randomUUID(),
-            userId: userId,
-            credentialId: id,
-            credentialPublicKey: isoBase64URL.fromBuffer(publicKey),
-            counter: counter,
-            transports: JSON.stringify(transports || []),
-          });
-
-          await c.get("setSession")(userId);
-
-          return c.json({ verified: true });
-        }
-
-        return c.json({ error: "WebAuthn verification failed." }, 400);
+        const result = await auth.register(body);
+        return c.json(result, 201);
       } catch (error: any) {
-        console.error("REGISTRATION VERIFICATION FAILED:", error);
-        return c.json({ error: "Registration failed due to a server error." }, 500);
+        return c.json({ error: error.message }, 400);
       }
     }
   )
 
-  /**
-   * 3. LOGIN: Get Options
-   */
-  .post(
-    "/login/options",
-    zValidator("json", emailSchema, (result, c) => {
-      if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
-    }),
-    async (c) => {
-      try {
-        const { email } = c.req.valid("json");
-        const db = c.get("db");
+  .post("/login", zValidator("json", loginUserSchema), async (c) => {
+    const { auth } = c.var;
+    const body = await c.req.valid("json");
 
-        const foundUser = await db.select().from(user).where(eq(user.email, email)).get();
-        if (!foundUser) {
-          return c.json({ error: "No account found with this email." }, 404);
-        }
+    const isMethodEnabled = c.get("isMethodEnabled");
 
-        const userAuths = await db
-          .select()
-          .from(authenticator)
-          .where(eq(authenticator.userId, foundUser.id))
-          .all();
-
-        if (userAuths.length === 0) {
-          return c.json({ error: "No passkeys registered for this account." }, 400);
-        }
-
-        const options = await generateAuthenticationOptions({
-          rpID: c.env.RP_ID,
-          allowCredentials: userAuths.map((auth) => ({
-            id: auth.credentialId,
-            transports: auth.transports ? JSON.parse(auth.transports) : undefined,
-          })),
-          userVerification: "preferred",
-        });
-
-        const challengeId = await c.get("setChallenge")(options.challenge);
-
-        return c.json({ ...options, challengeId });
-      } catch (e) {
-        console.error("Login Options Error:", e);
-        return c.json({ error: "Failed to generate login options." }, 500);
+    try {
+      let result;
+      // Route to appropriate login method
+      if (body.password && isMethodEnabled("password")) {
+        result = await auth.loginWithPassword(body.email, body.password);
+      } else if (body.pin && isMethodEnabled("pin")) {
+        result = await auth.loginWithPin(body.email, body.pin);
+      } else if (body.totpCode && isMethodEnabled("totp")) {
+        result = await auth.loginWithTotp(body.email, body.totpCode);
+      } else {
+        return c.json({ error: "Invalid authentication method" }, 400);
       }
+
+      const cookie = auth.createSessionCookie(result.sessionToken);
+      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+
+      return c.json(result);
+    } catch (error: any) {
+      return c.json({ error: error.message }, 401);
     }
-  )
-
-  /**
-   * 4. LOGIN: Verify
-   */
-  .post(
-    "/login/verify",
-    zValidator("json", loginVerifySchema, (result, c) => {
-      if (!result.success) return c.json({ error: "Invalid request format" }, 400);
-    }),
-    async (c) => {
-      try {
-        const { email, response, challengeId } = c.req.valid("json");
-
-        const challenge = await c.get("getChallenge")(challengeId);
-        if (!challenge) {
-          return c.json({ error: "Login session expired. Please try again." }, 400);
-        }
-
-        const db = c.get("db");
-        const foundUser = await db.select().from(user).where(eq(user.email, email)).get();
-
-        if (!foundUser) {
-          return c.json({ error: "User not found." }, 404);
-        }
-
-        const auth = await db
-          .select()
-          .from(authenticator)
-          .where(eq(authenticator.credentialId, response.id))
-          .get();
-
-        if (!auth) {
-          return c.json({ error: "Passkey not recognized." }, 400);
-        }
-
-        const verification = await verifyAuthenticationResponse({
-          response: response as any,
-          expectedChallenge: challenge,
-          expectedOrigin: c.env.ORIGIN,
-          expectedRPID: c.env.RP_ID,
-          credential: {
-            id: auth.credentialId,
-            publicKey: isoBase64URL.toBuffer(auth.credentialPublicKey),
-            counter: auth.counter,
-            transports: auth.transports ? JSON.parse(auth.transports) : undefined,
-          },
-        });
-
-        if (verification.verified) {
-          const { authenticationInfo } = verification;
-
-          await db
-            .update(authenticator)
-            .set({ counter: authenticationInfo.newCounter })
-            .where(eq(authenticator.id, auth.id));
-
-          await c.get("setSession")(foundUser.id);
-
-          return c.json({ verified: true });
-        }
-
-        return c.json({ error: "Verification failed." }, 400);
-      } catch (err) {
-        console.error("Login verification error:", err);
-        return c.json({ error: "Login failed due to a server error." }, 500);
-      }
-    }
-  )
-
-  /**
-   * 5. GET Current User
-   */
+  })
   .get("/me", (c) => {
-    const user = c.get("user");
+    const user = c.var.auth.user;
     if (!user) {
       return c.json({ error: "You are not logged in." }, 401);
     }
-    return c.json(user);
+    const cleanUser = safeUserSchema.parse(user);
+    return c.json(cleanUser);
+  })
+  .patch("/me", zValidator("json", updateUserProfileSchema), async (c) => {
+    const user = c.var.auth.user;
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+    const payload = c.req.valid("json");
+    const { auth } = c.var;
+
+    try {
+      await auth.updateProfile(user.id, payload);
+      return c.json({ success: true, user: auth.user });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 400);
+    }
+  })
+  .delete("/me", async (c) => {
+    const user = c.var.auth.user;
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+    const { auth } = c.var;
+
+    try {
+      await auth.deleteAccount(user.id);
+
+      // Clear cookie
+      const cookie = auth.createBlankSessionCookie();
+      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+
+      return c.json({ success: true });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  })
+  .post("/change-password", zValidator("json", changePasswordRequestSchema), async (c) => {
+    const user = c.var.auth.user;
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+    const payload = c.req.valid("json");
+    const { auth } = c.var;
+
+    try {
+      await auth.changePassword(user.id, payload);
+      return c.json({ success: true });
+    } catch (e: any) {
+      // Return 400 for wrong password, etc.
+      return c.json({ error: e.message }, 400);
+    }
+  })
+  .post("/change-pin", zValidator("json", changePinRequestSchema), async (c) => {
+    const user = c.var.auth.user;
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+    const payload = c.req.valid("json");
+    const { auth } = c.var;
+
+    try {
+      await auth.changePin(user.id, payload);
+      return c.json({ success: true });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 400);
+    }
   })
 
-  /**
-   * 6. LOGOUT
-   */
   .post("/logout", async (c) => {
     try {
-      const destroySession = c.get("destroySession");
-      await destroySession();
+      const { auth } = c.var;
+      if (auth.session) {
+        await auth.invalidateSession(auth.session.id);
+      }
+      // Clear cookie
+      const cookie = auth.createBlankSessionCookie();
+      setCookie(c, cookie.name, cookie.value, cookie.attributes);
       return c.json({ success: true });
     } catch (e) {
       console.error("Logout error", e);
       return c.json({ error: "Failed to log out." }, 500);
+    }
+  })
+
+  /**
+   * Email/Phone verification
+   
+  .post(
+    "/verification/request",
+    authMiddleware,
+    //rateLimitMiddleware(3, 300000), // 3 requests per 5 minutes
+    zValidator("json", requestVerificationSchema),
+    async (c) => {
+      const db = c.get("db");
+      const userId = c.get("userId");
+      const body = c.req.valid("json");
+
+      try {
+        await authService.sendVerificationCode(db, userId, body);
+        return c.json({ message: `Verification code sent to your ${body.type}` });
+      } catch (error: any) {
+        return c.json({ error: error.message }, 400);
+      }
+    }
+  )
+
+  .post("/verification/verify", authMiddleware, zValidator("json", verifyCodeSchema), async (c) => {
+    const db = c.get("db");
+    const userId = c.get("userId");
+    const body = c.req.valid("json");
+
+    try {
+      await authService.verifyCode(db, userId, body.code, body.type);
+      return c.json({ message: `${body.type} verified successfully` });
+    } catch (error: any) {
+      return c.json({ error: error.message }, 400);
+    }
+  })
+  */
+  /**
+   * Auth logs (admin/security monitoring)
+   */
+  .get("/logs", authMiddleware, zValidator("query", z.object({})), async (c) => {
+    //zValidator("query", queryAuthLogsSchema),
+    const { auth } = c.var;
+    const query = c.req.valid("query");
+
+    try {
+      const logs = await auth.getAuthLogs(query);
+      return c.json({ logs });
+    } catch (error: any) {
+      return c.json({ error: error.message }, 400);
     }
   });

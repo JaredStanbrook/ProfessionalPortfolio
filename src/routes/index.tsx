@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { CardContent } from "@/components/ui/card";
 import { HighlightCard, type HighlightCardSize } from "@/components/ui/highlight-card";
 import Typewriter from "@/components/typewriter";
+import type { SelectBlogMetadata } from "@server/schema/blogs.schema";
 
 export const Route = createFileRoute("/")({
   component: Homepage,
@@ -22,15 +23,6 @@ interface CursorState {
   isClose: boolean;
 }
 
-interface BlogMetadata {
-  filename: string;
-  title: string;
-  readTime: number;
-  subject: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 function Homepage() {
   const navigate = useNavigate();
   const [mousePos, setMousePos] = useState<MousePosition>({ x: 0, y: 0 });
@@ -41,7 +33,7 @@ function Homepage() {
     isAttracted: false,
     isClose: false,
   });
-  const [blogs, setBlogs] = useState<BlogMetadata[]>([]);
+  const [blogs, setBlogs] = useState<SelectBlogMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const titleRef = useRef<HTMLSpanElement>(null);
@@ -323,7 +315,7 @@ function Homepage() {
                     </div>
 
                     <div className="text-sm mt-4">
-                      Jared Stanbrook • {formatDate(blog.createdAt)}
+                      {blog.authorName} • {formatDate(blog.createdAt)}
                     </div>
                   </CardContent>
                 </HighlightCard>

@@ -1,9 +1,9 @@
-import { insertUserSchema } from "./db/schema/user";
-import { insertSessionSchema } from "./db/schema/session";
+import { insertUserSchema } from "./schema/user";
+import { insertSessionSchema } from "./schema/session";
 
 import { z } from "zod/v4";
-import { selectGithubCacheSchema } from "./db/schema/githubCache";
-import type { selectBlogMetadataSchema } from "./db/schema/blogMetadata";
+import { selectGithubCacheSchema } from "./schema/githubCache";
+import type { selectBlogMetadataSchema } from "./schema/blogMetadata";
 
 export const createUserSchema = insertUserSchema
   .omit({

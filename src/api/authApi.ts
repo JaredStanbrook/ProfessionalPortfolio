@@ -1,65 +1,52 @@
-// src/api/authApi.ts - Updated for KV-based challenge storage with Hono RPC
-
+// src/api/authApi.ts
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { toast } from "sonner";
+import { api } from "@/api/apiClient";
+import { getErrorMessage } from "@/lib/utils";
 
-import { api } from "@/api/apiClient"; // Your Hono RPC client
-import type { User } from "@server/db/schema/user";
+// Import types directly from your shared schema
+import type {
+  SafeUser,
+  LoginUser,
+  RegisterUser,
+  RegisterPasskeyVerify,
+  LoginPasskeyVerify,
+} from "@server/schema/auth.schema";
+import type { AuthMethod } from "@server/config/auth.config";
+import { z } from "zod";
 
 export const auth = api.auth;
 
-// Type for options response (now includes challengeId)
-interface RegistrationOptionsResponse {
-  challenge: string;
-  challengeId: string;
-  rp: {
-    name: string;
-    id: string;
-  };
-  user: {
-    id: string;
-    name: string;
-    displayName: string;
-  };
-  pubKeyCredParams: Array<{
-    type: string;
-    alg: number;
-  }>;
-  timeout?: number;
-  excludeCredentials?: Array<any>;
-  authenticatorSelection?: any;
-  attestation?: string;
+export interface AuthConfigResponse {
+  methods: AuthMethod[];
+  requireEmailVerification: boolean;
+  requirePhoneVerification: boolean;
+  roles: string[];
+  defaultRole: string;
 }
 
-interface AuthenticationOptionsResponse {
-  challenge: string;
-  challengeId: string;
-  timeout?: number;
-  rpId?: string;
-  allowCredentials?: Array<any>;
-  userVerification?: string;
-}
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "New password must be at least 8 characters"),
+});
 
-// Helper to extract error message from Hono RPC response
-async function getErrorMessage(res: Response): Promise<string> {
-  try {
-    const data = await res.json();
-    // Hono RPC error format typically has an 'error' field
-    return data.error || data.message || "An unexpected error occurred";
-  } catch {
-    return `Request failed with status ${res.status}`;
-  }
-}
+export const changePinSchema = z.object({
+  currentPin: z.string().min(1, "Current PIN is required"),
+  newPin: z.string().min(4, "New PIN must be at least 4 digits"),
+});
 
-// --- QUERIES ---
+export const updateUserSchema = z.object({
+  displayName: z.string().min(2).optional(),
+  phoneNumber: z.string().optional(),
+});
+
+// --- Queries ---
 
 async function getCurrentUser() {
   const res = await auth.me.$get();
-  if (!res.ok) {
-    throw new Error(await getErrorMessage(res));
-  }
-  return (await res.json()) as User;
+  if (!res.ok) throw new Error(await getErrorMessage(res));
+  return (await res.json()) as SafeUser;
 }
 
 export const getUserQueryOptions = queryOptions({
@@ -69,144 +56,45 @@ export const getUserQueryOptions = queryOptions({
   retry: false,
 });
 
-// --- MUTATIONS (WebAuthn Logic) ---
+async function getAuthMethods() {
+  const res = await auth.methods.$get();
+  if (!res.ok) throw new Error(await getErrorMessage(res));
+  return (await res.json()) as AuthConfigResponse;
+}
 
-/**
- * REGISTRATION (The 2-step Dance with KV Challenge)
- */
-export async function registerUser({ email }: { email: string }) {
-  // 1. Get Options from Server (includes challengeId)
-  const optRes = await auth.register.options.$post({ json: { email } });
+export const getAuthMethodsQueryOptions = queryOptions({
+  queryKey: ["get-auth-methods"],
+  queryFn: getAuthMethods,
+  staleTime: Infinity,
+});
 
-  // Handle 409 Conflict - email already registered
-  if (optRes.status === 409) {
-    throw new Error("This email is already registered. Please proceed to login.");
-  }
+// --- Mutations: Password/Standard ---
 
-  if (!optRes.ok) {
-    const errorMsg = await getErrorMessage(optRes);
-    throw new Error(errorMsg);
-  }
-
-  const options = (await optRes.json()) as RegistrationOptionsResponse;
-
-  console.log("Registration options received:", {
-    challengeId: options.challengeId,
-    hasChallenge: !!options.challenge,
-  });
-
-  // 2. Sign in Browser (Passkey prompt)
-  let attResp;
-  try {
-    attResp = await startRegistration({ optionsJSON: options });
-  } catch (error: any) {
-    // Handle specific WebAuthn errors
-    if (error.name === "InvalidStateError") {
-      throw new Error("A passkey for this account already exists on this device. Please log in.");
-    }
-
-    if (error.name === "NotAllowedError") {
-      throw new Error("Passkey operation cancelled or disallowed by the browser.");
-    }
-
-    throw error;
-  }
-
-  // 3. Verify with Server (send challengeId back)
-  const verRes = await auth.register.verify.$post({
-    json: {
-      email,
-      response: attResp,
-      challengeId: options.challengeId,
-    },
-  });
-
-  if (!verRes.ok) {
-    const errorMsg = await getErrorMessage(verRes);
-    throw new Error(errorMsg);
-  }
-
-  return await verRes.json();
+export async function registerUser(payload: RegisterUser) {
+  const res = await auth.register.$post({ json: payload });
+  if (!res.ok) throw new Error(await getErrorMessage(res));
+  return await res.json();
 }
 
 export function useRegisterMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: registerUser,
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Account created!");
+      if (data.user) {
+        queryClient.setQueryData(getUserQueryOptions.queryKey, data.user);
+      }
       queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
     },
-    onError: (err) => {
-      console.error("Registration error:", err);
-
-      if (err.message.includes("Passkey operation cancelled")) {
-        toast.info("Registration cancelled.");
-      } else if (err.message.includes("already registered")) {
-        toast.error(err.message, {
-          description: "Click 'Sign In' below to continue.",
-          duration: 8000,
-        });
-      } else if (err.message.includes("Challenge expired")) {
-        toast.error("Registration timed out. Please try again.", {
-          description: "The security challenge expired after 5 minutes.",
-          duration: 5000,
-        });
-      } else {
-        toast.error(err.message);
-      }
-    },
+    onError: (err: any) => toast.error(err.message),
   });
 }
 
-/**
- * LOGIN (The 2-step Dance with KV Challenge)
- */
-export async function loginUser({ email }: { email: string }) {
-  // 1. Get Options (includes challengeId)
-  const optRes = await auth.login.options.$post({ json: { email } });
-
-  if (!optRes.ok) {
-    if (optRes.status === 404) {
-      throw new Error("User not found");
-    }
-    const errorMsg = await getErrorMessage(optRes);
-    throw new Error(errorMsg);
-  }
-
-  const options = (await optRes.json()) as AuthenticationOptionsResponse;
-
-  console.log("Authentication options received:", {
-    challengeId: options.challengeId,
-    hasChallenge: !!options.challenge,
-  });
-
-  // 2. Sign in Browser
-  let authResp;
-  try {
-    authResp = await startAuthentication({ optionsJSON: options });
-  } catch (error: any) {
-    if (error.name === "NotAllowedError") {
-      throw new Error("Authentication cancelled by user.");
-    }
-    throw new Error("Authentication failed or cancelled");
-  }
-
-  // 3. Verify (send challengeId back)
-  const verRes = await auth.login.verify.$post({
-    json: {
-      email,
-      response: authResp,
-      challengeId: options.challengeId,
-    },
-  });
-
-  if (!verRes.ok) {
-    const errorMsg = await getErrorMessage(verRes);
-    throw new Error(errorMsg);
-  }
-
-  return await verRes.json();
+export async function loginUser(payload: LoginUser) {
+  const res = await auth.login.$post({ json: payload });
+  if (!res.ok) throw new Error(await getErrorMessage(res));
+  return await res.json();
 }
 
 export function useLoginMutation() {
@@ -217,32 +105,81 @@ export function useLoginMutation() {
       toast.success("Welcome back!");
       queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
     },
-    onError: (err) => {
-      console.error("Login error:", err);
-
-      if (err.message.includes("cancelled by user")) {
-        toast.info("Login cancelled.");
-      } else if (err.message.includes("Challenge expired")) {
-        toast.error("Login timed out. Please try again.", {
-          description: "The security challenge expired after 5 minutes.",
-          duration: 5000,
-        });
-      } else {
-        toast.error(err.message);
-      }
-    },
+    onError: (err: any) => toast.error(err.message),
   });
 }
 
-/**
- * LOGOUT
- */
+// --- Mutations: Passkey ---
+
+// Note: We use a subset of RegisterPasskey because the server handles challenge generation
+export async function registerUserPasskey({ email }: Pick<RegisterPasskeyVerify, "email">) {
+  // 1. Get Options
+  const optRes = await auth.passkey.register.options.$post({ json: { email } });
+  if (optRes.status === 409) throw new Error("Email already registered.");
+  if (!optRes.ok) throw new Error(await getErrorMessage(optRes));
+
+  const options = await optRes.json();
+
+  // 2. Browser Interaction
+  const attResp = await startRegistration({ optionsJSON: options });
+
+  // 3. Verify
+  const verRes = await auth.passkey.register.verify.$post({
+    json: { email, response: attResp, challengeId: options.challengeId },
+  });
+
+  if (!verRes.ok) throw new Error(await getErrorMessage(verRes));
+  return await verRes.json();
+}
+
+export function useRegisterPasskeyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: registerUserPasskey,
+    onSuccess: () => {
+      toast.success("Passkey registered!");
+      queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
+export async function loginUserPasskey({ email }: Pick<LoginPasskeyVerify, "email">) {
+  // 1. Get Options
+  const optRes = await auth.passkey.login.options.$post({ json: { email } });
+  if (!optRes.ok) throw new Error(await getErrorMessage(optRes));
+
+  const options = await optRes.json();
+
+  // 2. Browser Interaction
+  const authResp = await startAuthentication({ optionsJSON: options });
+
+  // 3. Verify
+  const verRes = await auth.passkey.login.verify.$post({
+    json: { email, response: authResp, challengeId: options.challengeId },
+  });
+
+  if (!verRes.ok) throw new Error(await getErrorMessage(verRes));
+  return await verRes.json();
+}
+
+export function useLoginPasskeyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: loginUserPasskey,
+    onSuccess: () => {
+      toast.success("Logged in with Passkey!");
+      queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
+// --- Logout ---
+
 export async function logoutUser() {
   const res = await auth.logout.$post();
-  if (!res.ok) {
-    const errorMsg = await getErrorMessage(res);
-    throw new Error(errorMsg);
-  }
+  if (!res.ok) throw new Error(await getErrorMessage(res));
 }
 
 export function useLogoutMutation() {
@@ -250,9 +187,68 @@ export function useLogoutMutation() {
   return useMutation({
     mutationFn: logoutUser,
     onSuccess: () => {
-      toast.info("Logged out", { description: "See you next time!" });
+      toast.info("Logged out");
       queryClient.setQueryData(getUserQueryOptions.queryKey, null);
-      window.location.href = "/"; // Hard reload to clear client state
+      window.location.href = "/"; // Hard reload to clear client state often safer
     },
+  });
+}
+export function useUpdateProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (json: z.infer<typeof updateUserSchema>) => {
+      const res = await auth.me.$patch({ json });
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast.success("Profile updated");
+      if (data.user) {
+        queryClient.setQueryData(getUserQueryOptions.queryKey, data.user);
+      }
+      queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
+export function useChangePasswordMutation() {
+  return useMutation({
+    mutationFn: async (json: z.infer<typeof changePasswordSchema>) => {
+      const res = await auth["change-password"].$post({ json }); // Assuming POST /change-password
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: () => toast.success("Password changed successfully"),
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
+export function useChangePinMutation() {
+  return useMutation({
+    mutationFn: async (json: z.infer<typeof changePinSchema>) => {
+      const res = await auth["change-pin"].$post({ json }); // Assuming POST /change-pin
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: () => toast.success("PIN changed successfully"),
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
+export function useDeleteAccountMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await auth.me.$delete(); // Assuming DELETE /me
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.error("Account deleted");
+      queryClient.clear();
+      window.location.href = "/";
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 }
