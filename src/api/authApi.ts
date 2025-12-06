@@ -25,6 +25,10 @@ export interface AuthConfigResponse {
   roles: string[];
   defaultRole: string;
 }
+type LoginResponse = {
+  user?: SafeUser;
+  requireTotp?: boolean;
+};
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -91,8 +95,16 @@ export function useRegisterMutation() {
   });
 }
 
-export async function loginUser(payload: LoginUser) {
+export async function loginUser(payload: LoginUser): Promise<LoginResponse> {
   const res = await auth.login.$post({ json: payload });
+
+  if (res.status === 403) {
+    const data = await res.json();
+    if ("requireTotp" in data) {
+      return { requireTotp: true };
+    }
+  }
+
   if (!res.ok) throw new Error(await getErrorMessage(res));
   return await res.json();
 }
@@ -101,7 +113,8 @@ export function useLoginMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: loginUser,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.requireTotp) return;
       toast.success("Welcome back!");
       queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
     },
@@ -136,8 +149,11 @@ export function useRegisterPasskeyMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: registerUserPasskey,
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Passkey registered!");
+      if (data.user) {
+        queryClient.setQueryData(getUserQueryOptions.queryKey, data.user);
+      }
       queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
     },
     onError: (err: any) => toast.error(err.message),
@@ -172,6 +188,48 @@ export function useLoginPasskeyMutation() {
       queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
     },
     onError: (err: any) => toast.error(err.message),
+  });
+}
+// --- Mutations: TOTP / 2FA ---
+export function useSetupTotpMutation() {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await auth.totp.setup.$get();
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
+export function useEnableTotpMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { secret: string; code: string }) => {
+      const res = await auth.totp.enable.$post({ json: payload });
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success("Two-Factor Authentication Enabled!");
+      queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
+export function useDisableTotpMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await auth.totp.disable.$delete();
+      if (!res.ok) throw new Error(await getErrorMessage(res));
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.info("Two-Factor Authentication Disabled");
+      queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
+    },
   });
 }
 

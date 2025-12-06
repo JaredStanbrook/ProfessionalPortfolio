@@ -1,37 +1,38 @@
+// worker/index.ts
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { cors } from "hono/cors";
-
-import { githubRoute } from "./routes/github";
-import { auth as authRoute } from "./routes/auth";
-
 import { HTTPException } from "hono/http-exception";
-import { blogRoute } from "./routes/blog";
+import { cloudflareRateLimiter } from "@hono-rate-limiter/cloudflare";
 import type { AppEnv } from "./types";
-import { configMiddleware } from "./middleware/config.middleware";
-import { dbMiddleware } from "./middleware/db.middleware";
 
-const app = new Hono<AppEnv>()
-  .use("*", logger())
-  .use(
-    cors({
-      origin: "*",
-      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["Authorization", "Content-Type"],
-      credentials: true,
-    })
-  )
-  .basePath("/api")
-  .use("*", configMiddleware)
-  .use("*", dbMiddleware)
-  .route("/auth", authRoute)
-  .route("/github", githubRoute)
-  .route("/blog", blogRoute)
-  .get("/*", async (c) => {
-    return c.env.ASSETS.fetch(c.req.raw);
-  });
+import routes from "./app";
 
-app.onError((err, c) => {
+const worker = new Hono<AppEnv>();
+
+worker.use("*", logger());
+worker.use(
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Authorization", "Content-Type"],
+    credentials: true,
+  })
+);
+worker.use((c, next) =>
+  cloudflareRateLimiter<AppEnv>({
+    rateLimitBinding: (c) => c.env.RATE_LIMITER,
+    keyGenerator: (c) => c.req.header("cf-connecting-ip") ?? "",
+  })(c, next)
+);
+
+worker.route("/", routes);
+
+worker.get("/*", async (c) => {
+  return c.env.ASSETS.fetch(c.req.raw);
+});
+
+worker.onError((err, c) => {
   if (err instanceof HTTPException) {
     return c.json({ error: err.message }, err.status);
   }
@@ -39,9 +40,8 @@ app.onError((err, c) => {
   return c.json({ error: "Internal Server Error" }, 500);
 });
 
-app.notFound((c) => {
+worker.notFound((c) => {
   return c.env.ASSETS.fetch(c.req.raw);
 });
 
-export type AppType = typeof app;
-export default app;
+export default worker;

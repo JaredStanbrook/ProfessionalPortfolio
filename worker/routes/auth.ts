@@ -1,8 +1,8 @@
 // worker/routes/auth.ts
 import { Hono } from "hono";
 import { z } from "zod";
+import { csrf } from "hono/csrf";
 import { zValidator } from "@hono/zod-validator";
-import { requireRole } from "../middleware/guard.middleware";
 import { authMiddleware } from "../middleware/auth.middleware.ts";
 import {
   loginUserSchema,
@@ -15,9 +15,9 @@ import {
   updateUserProfileSchema,
   changePasswordRequestSchema,
   changePinRequestSchema,
+  verifyTotpSchema,
 } from "../schema/auth.schema";
 import type { AppEnv } from "../types";
-import { setCookie } from "hono/cookie";
 
 // --- Routes ---
 export const passkey = new Hono<AppEnv>()
@@ -48,20 +48,16 @@ export const passkey = new Hono<AppEnv>()
   // 2. Register Verify
   .post("/register/verify", zValidator("json", registerPasskeyVerifySchema), async (c) => {
     try {
-      const { email, response, challengeId } = c.req.valid("json");
+      const { email, role, response, challengeId } = c.req.valid("json");
       const { auth } = c.var;
 
-      const { verified, sessionToken } = await auth.verifyPasskeyRegistration(
-        email,
-        response as any, // Cast to 'any' here as Zod has already validated structure
-        challengeId
-      );
+      const { user, requiresVerification, verified, sessionToken } =
+        await auth.verifyPasskeyRegistration(email, role, response as any, challengeId);
 
       // Set Cookie
-      const cookie = auth.createSessionCookie(sessionToken);
-      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+      await auth.createSession({ id: sessionToken.user.id, roles: sessionToken.user.roles });
 
-      return c.json({ verified });
+      return c.json({ user, requiresVerification, verified });
     } catch (e: any) {
       console.error("Register Verify Error:", e);
       return c.json({ error: e.message || "Registration verification failed" }, 400);
@@ -88,17 +84,12 @@ export const passkey = new Hono<AppEnv>()
       const { email, response, challengeId } = c.req.valid("json");
       const { auth } = c.var;
 
-      const { verified, sessionToken } = await auth.verifyPasskeyLogin(
-        email,
-        response as any,
-        challengeId
-      );
+      const { user } = await auth.verifyPasskeyLogin(email, response as any, challengeId);
 
       // Set Cookie
-      const cookie = auth.createSessionCookie(sessionToken);
-      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+      await auth.createSession(user);
 
-      return c.json({ verified });
+      return c.json(user);
     } catch (e: any) {
       console.error("Login Verify Error:", e);
       return c.json({ error: e.message || "Login verification failed" }, 400);
@@ -108,59 +99,60 @@ export const passkey = new Hono<AppEnv>()
 /**
  * TOTP setup
  */
-export const totp = new Hono<AppEnv>().use("*", async (c, next) => {
-  const isMethodEnabled = c.get("isMethodEnabled");
-  if (!isMethodEnabled("totp")) {
-    return c.json({ error: "TOTP is not enabled" }, 404);
-  }
-  await next();
-});
-/*
-  .post("/setup", authMiddleware, async (c) => {
+export const totp = new Hono<AppEnv>()
+  .use("*", async (c, next) => {
+    const isMethodEnabled = c.get("isMethodEnabled");
+    if (!isMethodEnabled("totp")) {
+      return c.json({ error: "TOTP is not enabled" }, 404);
+    }
+    await next();
+  })
+  .get("/setup", async (c) => {
     const { auth } = c.var;
-    const db = c.get("db");
-    const userId = auth.user?.id;
-
     try {
-      //const result = await authService.setupTotp(db, userId); TODO setup totp
-      //return c.json(result);
-    } catch (error: any) {
-      return c.json({ error: error.message }, 400);
-    }
-  });
-
-  .post("/verify", authMiddleware, zValidator("json", verifyTotpSchema), async (c) => {
-    const db = c.get("db");
-    const userId = c.get("userId");
-    const { code } = c.req.valid("json");
-
-    try {
-      await authService.verifyTotp(db, userId, code);
-      return c.json({ message: "TOTP enabled successfully" });
-    } catch (error: any) {
-      return c.json({ error: error.message }, 400);
-    }
-  });
-
-  .delete("/disable", authMiddleware, async (c) => {
-    const db = c.get("db");
-    const userId = c.get("userId");
-
-    try {
-      await authService.disableTotp(db, userId);
-      return c.json({ message: "TOTP disabled successfully" });
+      const result = await auth.setupTotp();
+      return c.json(result);
     } catch (error: any) {
       return c.json({ error: error.message }, 400);
     }
   })
-}
-*/
+  .post("/enable", zValidator("json", verifyTotpSchema), async (c) => {
+    const { auth } = c.var;
+    const { secret, code } = c.req.valid("json");
+    try {
+      await auth.verifyAndEnableTotp(secret, code);
+      return c.json({ message: "TOTP enabled successfully" });
+    } catch (error: any) {
+      return c.json({ error: error.message }, 400);
+    }
+  })
+
+  .delete("/disable", authMiddleware, async (c) => {
+    const { auth } = c.var;
+
+    try {
+      await auth.disableTotp();
+      return c.json({ message: "TOTP disabled successfully" });
+    } catch (error: any) {
+      return c.json({ error: error.message }, 400);
+    }
+  });
+
 export const auth = new Hono<AppEnv>()
+  .use(
+    "*",
+    csrf({
+      origin: (origin) => {
+        return /^http:\/\/localhost|https:\/\/jared\.stanbrook\.me$/.test(origin);
+      },
+    })
+  )
   .use("*", authMiddleware)
+  .route("/passkey", passkey)
+  .route("/totp", totp)
   .get("/methods", (c) => {
     const { authConfig } = c.var;
 
-    // Filter out any role listed in 'restricted'
     const publicRoles = authConfig.roles.available.filter(
       (role) => !authConfig.roles.restricted.includes(role)
     );
@@ -174,24 +166,18 @@ export const auth = new Hono<AppEnv>()
       defaultRole: authConfig.roles.default,
     });
   })
-  .route("/passkey", passkey)
-  .route("/totp", totp)
-  .post(
-    "/register",
-    //rateLimitMiddleware(5, 60000),
-    zValidator("json", registerUserSchema),
-    async (c) => {
-      const { auth } = c.var;
-      const body = c.req.valid("json");
+  .post("/register", zValidator("json", registerUserSchema), async (c) => {
+    const { auth } = c.var;
+    const body = c.req.valid("json");
 
-      try {
-        const result = await auth.register(body);
-        return c.json(result, 201);
-      } catch (error: any) {
-        return c.json({ error: error.message }, 400);
-      }
+    try {
+      const result = await auth.register(body);
+      await auth.createSession({ id: result.user.id, roles: result.user.roles });
+      return c.json(result, 201);
+    } catch (error: any) {
+      return c.json({ error: error.message }, 400);
     }
-  )
+  })
 
   .post("/login", zValidator("json", loginUserSchema), async (c) => {
     const { auth } = c.var;
@@ -201,9 +187,8 @@ export const auth = new Hono<AppEnv>()
 
     try {
       let result;
-      // Route to appropriate login method
       if (body.password && isMethodEnabled("password")) {
-        result = await auth.loginWithPassword(body.email, body.password);
+        result = await auth.loginWithPassword(body.email, body.password, body.totpCode);
       } else if (body.pin && isMethodEnabled("pin")) {
         result = await auth.loginWithPin(body.email, body.pin);
       } else if (body.totpCode && isMethodEnabled("totp")) {
@@ -212,11 +197,13 @@ export const auth = new Hono<AppEnv>()
         return c.json({ error: "Invalid authentication method" }, 400);
       }
 
-      const cookie = auth.createSessionCookie(result.sessionToken);
-      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+      await auth.createSession(result.user);
 
-      return c.json(result);
+      return c.json(result.user);
     } catch (error: any) {
+      if (error.message === "TOTP_REQUIRED") {
+        return c.json({ requireTotp: true }, 403);
+      }
       return c.json({ error: error.message }, 401);
     }
   })
@@ -225,6 +212,7 @@ export const auth = new Hono<AppEnv>()
     if (!user) {
       return c.json({ error: "You are not logged in." }, 401);
     }
+
     const cleanUser = safeUserSchema.parse(user);
     return c.json(cleanUser);
   })
@@ -251,9 +239,7 @@ export const auth = new Hono<AppEnv>()
     try {
       await auth.deleteAccount(user.id);
 
-      // Clear cookie
-      const cookie = auth.createBlankSessionCookie();
-      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+      auth.destroySession();
 
       return c.json({ success: true });
     } catch (e: any) {
@@ -271,7 +257,6 @@ export const auth = new Hono<AppEnv>()
       await auth.changePassword(user.id, payload);
       return c.json({ success: true });
     } catch (e: any) {
-      // Return 400 for wrong password, etc.
       return c.json({ error: e.message }, 400);
     }
   })
@@ -293,58 +278,17 @@ export const auth = new Hono<AppEnv>()
   .post("/logout", async (c) => {
     try {
       const { auth } = c.var;
-      if (auth.session) {
-        await auth.invalidateSession(auth.session.id);
-      }
-      // Clear cookie
-      const cookie = auth.createBlankSessionCookie();
-      setCookie(c, cookie.name, cookie.value, cookie.attributes);
+      auth.destroySession();
       return c.json({ success: true });
     } catch (e) {
       console.error("Logout error", e);
       return c.json({ error: "Failed to log out." }, 500);
     }
   })
-
-  /**
-   * Email/Phone verification
-   
-  .post(
-    "/verification/request",
-    authMiddleware,
-    //rateLimitMiddleware(3, 300000), // 3 requests per 5 minutes
-    zValidator("json", requestVerificationSchema),
-    async (c) => {
-      const db = c.get("db");
-      const userId = c.get("userId");
-      const body = c.req.valid("json");
-
-      try {
-        await authService.sendVerificationCode(db, userId, body);
-        return c.json({ message: `Verification code sent to your ${body.type}` });
-      } catch (error: any) {
-        return c.json({ error: error.message }, 400);
-      }
-    }
-  )
-
-  .post("/verification/verify", authMiddleware, zValidator("json", verifyCodeSchema), async (c) => {
-    const db = c.get("db");
-    const userId = c.get("userId");
-    const body = c.req.valid("json");
-
-    try {
-      await authService.verifyCode(db, userId, body.code, body.type);
-      return c.json({ message: `${body.type} verified successfully` });
-    } catch (error: any) {
-      return c.json({ error: error.message }, 400);
-    }
-  })
-  */
   /**
    * Auth logs (admin/security monitoring)
    */
-  .get("/logs", authMiddleware, zValidator("query", z.object({})), async (c) => {
+  .get("/logs", zValidator("query", z.object({})), async (c) => {
     //zValidator("query", queryAuthLogsSchema),
     const { auth } = c.var;
     const query = c.req.valid("query");

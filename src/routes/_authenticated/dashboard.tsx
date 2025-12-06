@@ -16,7 +16,9 @@ function Dashboard() {
 
   return (
     <div className="container grow flex flex-col items-center justify-center py-12">
-      <h1 className="text-3xl font-bold">Welcome, {user.email!.split("@")[0]}!</h1>
+      <h1 className="text-3xl font-bold">
+        {user ? `Welcome, ${user.email!.split("@")[0]}!` : "Goodbye!"}
+      </h1>
       <p className="text-sm text-muted-foreground mt-2">You are viewing protected content.</p>
     </div>
   );

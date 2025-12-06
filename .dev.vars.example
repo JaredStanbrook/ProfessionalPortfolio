@@ -1,4 +1,6 @@
-GITHUB_API_TOKEN="github_token"
+GITHUB_API_TOKEN=""
+ENVIRONMENT="test"
+
 # ==========================================
 # CORE AUTHENTICATION
 # ==========================================
@@ -15,7 +17,7 @@ MAX_SESSIONS_PER_USER=5
 # SECURITY & ACCESS CONTROL
 # ==========================================
 # Invite-only mode (optional). If set, only this email can register.
-ALLOWED_EMAIL=yourname@example.com
+ALLOWED_EMAILS=jared@test.com, miles@test.com
 
 # Brute force protection
 MAX_FAILED_LOGIN_ATTEMPTS=5
@@ -29,7 +31,7 @@ REQUIRE_PHONE_VERIFICATION=false
 # ROLES & PERMISSIONS (RBAC)
 # ==========================================
 # 1. Available: All roles the system understands
-ROLES_AVAILABLE=admin,user,editor
+ROLES_AVAILABLE=user,editor,admin
 
 # 2. Default: Assigned automatically upon registration
 ROLES_DEFAULT=user
@@ -38,8 +40,9 @@ ROLES_DEFAULT=user
 ROLES_RESTRICTED=admin
 
 # 4. Permissions: All valid permission strings
-PERMISSIONS_AVAILABLE=users.read,users.write,users.delete,posts.read,posts.write,settings.write
+PERMISSIONS_AVAILABLE=blogs.create,blogs.read,blogs.update,blogs.delete,blogs.update.any,blogs.delete.any
 
+ROLES_INHERENT="user:blogs.read,blogs.create,blogs.update;editor:blogs.read,blogs.create,blogs.update.any;admin:*"
 # ==========================================
 # PASSKEY / WEBAUTHN CONFIG
 # ==========================================

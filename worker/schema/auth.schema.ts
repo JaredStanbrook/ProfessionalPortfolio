@@ -22,6 +22,7 @@ export const users = sqliteTable("users", {
   passwordHash: text("password_hash"),
   pin: text("pin"),
   totpSecret: text("totp_secret"),
+  totpEnabled: integer("totp_enabled", { mode: "boolean" }).default(false),
 
   // Account management (SQLite uses integer 0/1 for booleans)
   isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
@@ -65,7 +66,7 @@ export const credentials = sqliteTable("credentials", {
 /**
  * Sessions table
  */
-export const sessions = sqliteTable("sessions", {
+const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey().$defaultFn(genId),
   userId: text("user_id")
     .references(() => users.id, { onDelete: "cascade" })
@@ -203,6 +204,7 @@ export const registerPasskeyOptionsSchema = z.object({
 // Strictly typed Registration Response
 export const registerPasskeyVerifySchema = z.object({
   email: z.email(),
+  role: z.string().optional(),
   challengeId: z.string().min(1),
   response: z.object({
     id: base64UrlString,
@@ -274,6 +276,20 @@ export const insertVerificationCodeSchema = createInsertSchema(verificationCodes
 export const selectVerificationCodeSchema = createSelectSchema(verificationCodes);
 
 // ==========================================
+// TOTP CODES
+// ==========================================
+
+export const setupTotpResponseSchema = z.object({
+  secret: z.string(),
+  otpauthUrl: z.string(),
+});
+
+export const verifyTotpSchema = z.object({
+  secret: z.string(),
+  code: z.string().length(6),
+});
+
+// ==========================================
 // 📜 AUTH LOGS
 // ==========================================
 
@@ -293,7 +309,8 @@ export type LoginUser = z.infer<typeof loginUserSchema>;
 export type SafeUser = z.infer<typeof safeUserSchema>;
 export type RegisterPasskeyVerify = z.infer<typeof registerPasskeyVerifySchema>;
 export type LoginPasskeyVerify = z.infer<typeof loginPasskeyVerifySchema>;
-export type ChangePassword = z.infer<typeof changePasswordSchema>; //TODO make custom z.object
+export type ChangePassword = z.infer<typeof changePasswordSchema>;
+export type VerifyTotp = z.infer<typeof verifyTotpSchema>;
 
 export type InsertCredential = z.infer<typeof insertCredentialSchema>;
 export type SelectCredential = z.infer<typeof selectCredentialSchema>;

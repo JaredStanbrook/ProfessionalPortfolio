@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Assuming you have shadcn tabs
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/_auth/login")({
   beforeLoad: ({ context }) => {
@@ -26,16 +26,26 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
 
-  // Fetch available methods
+  const [requiresTotp, setRequiresTotp] = useState(false);
+
   const { data: config, isLoading } = useQuery(getAuthMethodsQueryOptions);
-
-  const { mutate: loginPwd, isPending: isPwdPending } = useLoginMutation();
+  const { mutate: login, isPending: isPwdPending } = useLoginMutation();
   const { mutate: loginPasskey, isPending: isPkPending } = useLoginPasskeyMutation();
 
   const handlePasswordLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    loginPwd({ email, password }, { onSuccess: () => navigate({ to: "/dashboard" }) });
+    const payload = requiresTotp ? { email, password, totpCode } : { email, password };
+    login(payload, {
+      onSuccess: (data) => {
+        if (data?.requireTotp) {
+          setRequiresTotp(true);
+        } else {
+          navigate({ to: "/dashboard" });
+        }
+      },
+    });
   };
 
   const handlePasskeyLogin = (e: React.FormEvent) => {
@@ -56,8 +66,55 @@ function LoginPage() {
 
   const defaultTab = hasPassword ? "password" : "passkey";
 
+  if (requiresTotp) {
+    return (
+      <div className="container grow flex flex-col items-center justify-center py-12">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-8 sm:w-[400px] p-8 border rounded-lg shadow-xl bg-card">
+          <div className="flex flex-col space-y-2 text-center items-center">
+            <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+              <ShieldCheck className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">Two-Factor Auth</h1>
+            <p className="text-sm text-muted-foreground">
+              Enter the 6-digit code from your authenticator app.
+            </p>
+          </div>
+
+          <form onSubmit={handlePasswordLogin} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="totp">Authentication Code</Label>
+              <Input
+                id="totp"
+                type="text"
+                maxLength={6}
+                placeholder="000000"
+                className="text-center text-lg tracking-widest"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
+                autoFocus
+                required
+              />
+            </div>
+            <Button type="submit" disabled={isPwdPending} className="w-full">
+              {isPwdPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Verify
+            </Button>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => {
+                setRequiresTotp(false);
+                setTotpCode("");
+              }}>
+              Back to Login
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="container flex-grow flex flex-col items-center justify-center py-12">
+    <div className="container grow flex flex-col items-center justify-center py-12">
       <div className="mx-auto flex w-full flex-col justify-center space-y-8 sm:w-[400px] p-8 border rounded-lg shadow-xl bg-card">
         <div className="flex flex-col space-y-2 text-center">
           <h1 className="text-3xl font-bold tracking-tight">Sign In</h1>

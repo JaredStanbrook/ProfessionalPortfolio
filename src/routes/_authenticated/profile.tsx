@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { TotpSettingsCard } from "@/components/TotpSettingsCard";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,6 @@ import {
   User as UserIcon,
   Shield,
   Trash2,
-  LogOut,
   CheckCircle2,
   XCircle,
   KeyRound,
@@ -179,6 +179,8 @@ function Profile() {
           <CardDescription>Manage your password and authentication methods.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* --- TOTP SECTION --- */}
+          {config?.methods.includes("totp") && <TotpSettingsCard isEnabled={!!user.totpEnabled} />}
           {/* Change Password Dialog */}
           {config?.methods.includes("password") && (
             <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -210,7 +212,6 @@ function Profile() {
               <ChangePinDialog />
             </div>
           )}
-
           {/* Active Sessions info could go here */}
         </CardContent>
       </Card>

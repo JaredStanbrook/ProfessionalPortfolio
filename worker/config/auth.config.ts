@@ -20,6 +20,8 @@ export interface AuthConfig {
     requireEmailVerification: boolean;
     requirePhoneVerification: boolean;
     allowedEmails: string[];
+    jwtSecret: string;
+    jwtExpiry: number;
   };
   password?: {
     minLength: number;
@@ -122,6 +124,8 @@ export function parseAuthConfig(env: any): AuthConfig {
       requireEmailVerification,
       requirePhoneVerification,
       allowedEmails,
+      jwtSecret: env.JWT_SECRET || "default",
+      jwtExpiry: parseInt(env.JWT_EXPIRY) || 7 * 24 * 60 * 60,
     },
     roles: {
       available: rolesAvailable,

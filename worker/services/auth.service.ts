@@ -1,9 +1,9 @@
 // worker/services/auth.service.ts
-import { eq, and, or, gt, desc, asc } from "drizzle-orm";
+import { eq, and, or, gt, desc } from "drizzle-orm";
+import { verify } from "hono/jwt";
 import { z } from "zod";
 import {
   users,
-  sessions,
   credentials,
   authLogs,
   verificationCodes,
@@ -13,15 +13,7 @@ import {
 } from "../schema/auth.schema";
 import type { RegisterUser, InsertUser, InsertAuthLog, SafeUser } from "../schema/auth.schema";
 import type { RegistrationResponseJSON, AuthenticationResponseJSON } from "@simplewebauthn/types";
-import {
-  hashPassword,
-  verifyPassword,
-  randomString,
-  constantTimeEqual,
-  hashSecret,
-  generateTotpSecret,
-  verifyTotpCode,
-} from "../utils/crypto";
+import { hashPassword, verifyPassword, randomString } from "../utils/crypto";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -33,9 +25,10 @@ import { isoBase64URL, isoUint8Array } from "@simplewebauthn/server/helpers";
 import type { AuthConfig } from "../config/auth.config";
 import { RoleService } from "./roles.service";
 import type { Context } from "hono";
-import { setCookie } from "hono/cookie";
+import { sign } from "hono/jwt";
+import { setCookie, deleteCookie } from "hono/cookie";
+import * as OTPAuth from "otpauth";
 
-const SESSION_COOKIE = "auth_session";
 const CHALLENGE_PREFIX = "challenge:";
 const CHALLENGE_TTL = 300; // 5 minutes
 
@@ -104,187 +97,110 @@ export class Auth {
       throw new Error("Registration is currently invite-only.");
     }
   }
+  private getTotpObject(secret: string, label: string = "User") {
+    return new OTPAuth.TOTP({
+      issuer: this.authConfig.totp?.issuer,
+      label: label,
+      algorithm: "SHA1",
+      digits: 6,
+      period: 30,
+      secret: OTPAuth.Secret.fromBase32(secret),
+    });
+  }
+  verifyTotpCode(secret: string | null | undefined, code: string): boolean {
+    if (!secret || !code) return false;
 
+    const totp = this.getTotpObject(secret);
+
+    const delta = totp.validate({ token: code, window: 1 });
+
+    return delta !== null;
+  }
   // ==========================================
   // SESSION MANAGEMENT
   // ==========================================
 
-  async validateSession(
-    sessionToken: string
-  ): Promise<{ user: SafeUser; session: { id: string } } | { user: null; session: null }> {
-    const [id, secret] = sessionToken.split(".");
-    if (!id || !secret) {
-      return { session: null, user: null };
-    }
+  async validateSession(token: string) {
+    try {
+      // 1. Verify Token (Throws error if invalid/expired)
+      const payload = await verify(token, this.authConfig.security.jwtSecret);
+      const userId = payload.sub as string;
 
-    const result = await this.db
-      .select({
-        sessionHash: sessions.secretHash,
-        sessionCreatedAt: sessions.createdAt,
-        sessionExpiresAt: sessions.expiresAt,
-        user: users,
-      })
-      .from(sessions)
-      .innerJoin(users, eq(sessions.userId, users.id))
-      .where(eq(sessions.id, id))
-      .get();
+      // 2. Fetch User (Destructuring the array [user])
+      // Note: Ensure you use 'this.db', not global 'db'
+      const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
 
-    if (!result) {
-      return { session: null, user: null };
-    }
-
-    const now = Date.now();
-    const expiresAt = new Date(result.sessionExpiresAt).getTime();
-
-    if (expiresAt < now) {
-      await this.db.delete(sessions).where(eq(sessions.id, id));
-      return { session: null, user: null };
-    }
-
-    const hashOk = constantTimeEqual(
-      await hashSecret(secret),
-      isoBase64URL.toBuffer(result.sessionHash)
-    );
-
-    if (!hashOk) {
-      return { session: null, user: null };
-    }
-
-    const timeRemaining = expiresAt - now;
-    const { duration, renewalThreshold } = this.authConfig.session;
-
-    if (timeRemaining < renewalThreshold) {
-      const newExpiry = new Date(now + duration);
-
-      await this.db
-        .update(sessions)
-        .set({
-          expiresAt: newExpiry.toISOString(),
-        })
-        .where(eq(sessions.id, id));
-
-      const cookie = this.createSessionCookie(sessionToken);
-      setCookie(this.c, cookie.name, cookie.value, cookie.attributes);
-    }
-
-    const roles = await this.roleService.getUserRoles(result.user.id);
-    const permissions = await this.roleService.getUserPermissions(result.user.id);
-
-    const safeUser: SafeUser = {
-      id: result.user.id,
-      username: result.user.username,
-      email: result.user.email,
-      displayName: result.user.displayName,
-      isActive: result.user.isActive,
-      emailVerified: result.user.emailVerified,
-      phoneNumber: result.user.phoneNumber,
-      phoneVerified: result.user.phoneVerified,
-      failedLoginAttempts: result.user.failedLoginAttempts,
-      lockedUntil: result.user.lockedUntil,
-      lastLoginAt: result.user.lastLoginAt,
-      createdAt: result.user.createdAt,
-      updatedAt: result.user.updatedAt,
-      roles: roles,
-      permissions: Array.from(permissions),
-    };
-
-    this.user = safeUser;
-    this.session = { id };
-
-    return {
-      user: safeUser,
-      session: { id },
-    };
-  }
-
-  async createSession(userId: string): Promise<string> {
-    const { maxSessions, duration } = this.authConfig.session;
-
-    const existingSessions = await this.db
-      .select({ id: sessions.id, createdAt: sessions.createdAt })
-      .from(sessions)
-      .where(eq(sessions.userId, userId))
-      .orderBy(asc(sessions.createdAt))
-      .all();
-
-    if (existingSessions.length >= maxSessions) {
-      const sessionsToDelete = existingSessions.slice(0, existingSessions.length - maxSessions + 1);
-      for (const s of sessionsToDelete) {
-        await this.db.delete(sessions).where(eq(sessions.id, s.id));
+      if (!user) {
+        return { user: null };
       }
+
+      // 3. Fetch Roles/Permissions (Assuming you have these helpers/services injected)
+      // If roleService isn't in 'this', you might need to query DB directly here
+      const roles = await this.roleService.getUserRoles(user.id);
+      const permissions = await this.roleService.getUserPermissions(user.id);
+
+      // 4. Construct Safe User
+      const safeUser: SafeUser = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        totpEnabled: user.totpEnabled,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,
+        phoneNumber: user.phoneNumber,
+        phoneVerified: user.phoneVerified,
+        failedLoginAttempts: user.failedLoginAttempts,
+        lockedUntil: user.lockedUntil,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        roles: roles,
+        permissions: Array.from(permissions),
+      };
+
+      // 5. Update Class State
+      this.user = safeUser;
+
+      // In stateless JWT, we usually don't have a session ID unless we track jti
+      // We can just store the token itself if needed
+      // this.session = { id: token };
+
+      return { user: safeUser };
+    } catch (e) {
+      // Token expired, signature invalid, or DB error
+      console.error("Session validation failed", e);
+      return { user: null };
     }
+  }
+  async createSession(user: { id: string; roles: string[] }) {
+    const secret = this.authConfig.security.jwtSecret;
+    const expiresIn = this.authConfig.security.jwtExpiry;
 
-    const id = randomString(32);
-    const secret = randomString(32);
-    const secretHash = await hashSecret(secret);
-    const sessionSecretString = isoBase64URL.fromBuffer(secretHash as Uint8Array<ArrayBuffer>);
+    const payload = {
+      sub: user.id,
+      role: user.roles,
+      exp: Math.floor(Date.now() / 1000) + expiresIn,
+    };
 
-    const { ipAddress, userAgent } = this.getContextDetails();
+    const token = await sign(payload, secret);
 
-    await this.db.insert(sessions).values({
-      id,
-      userId,
-      secretHash: sessionSecretString,
-      ipAddress,
-      userAgent,
-      expiresAt: new Date(Date.now() + duration).toISOString(),
+    setCookie(this.c, "auth_token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+      path: "/",
+      maxAge: expiresIn,
     });
 
-    const sessionToken = `${id}.${secret}`;
-    this.session = { id };
-
-    return sessionToken;
+    return { token, user };
   }
 
-  async invalidateSession(sessionId: string): Promise<void> {
-    await this.db.delete(sessions).where(eq(sessions.id, sessionId));
-    this.user = null;
-    this.session = null;
-  }
-
-  async invalidateUserSessions(userId: string): Promise<void> {
-    await this.db.delete(sessions).where(eq(sessions.userId, userId));
-  }
-
-  createSessionCookie(sessionToken: string): { name: string; value: string; attributes: any } {
-    const maxAgeSeconds = Math.floor(this.authConfig.session.duration / 1000);
-
-    return {
-      name: SESSION_COOKIE,
-      value: sessionToken,
-      attributes: {
-        path: "/",
-        secure: true,
-        httpOnly: true,
-        sameSite: "Lax" as const,
-        maxAge: maxAgeSeconds,
-      },
-    };
-  }
-
-  createBlankSessionCookie(): { name: string; value: string; attributes: any } {
-    return {
-      name: SESSION_COOKIE,
-      value: "",
-      attributes: {
-        path: "/",
-        secure: true,
-        httpOnly: true,
-        sameSite: "Lax" as const,
-        maxAge: 0,
-      },
-    };
-  }
-
-  readSessionCookie(cookieHeader: string): string | null {
-    const cookies = cookieHeader.split(";").map((c) => c.trim());
-    for (const cookie of cookies) {
-      const [name, value] = cookie.split("=");
-      if (name === SESSION_COOKIE) {
-        return value || null;
-      }
-    }
-    return null;
+  async destroySession() {
+    deleteCookie(this.c, "auth_token", {
+      path: "/",
+      secure: true,
+    });
   }
 
   // ==========================================
@@ -389,6 +305,7 @@ export class Auth {
       username: newUser.username,
       email: newUser.email,
       displayName: newUser.displayName,
+      totpEnabled: newUser.totpEnabled,
       isActive: newUser.isActive,
       emailVerified: newUser.emailVerified,
       phoneNumber: newUser.phoneNumber,
@@ -435,7 +352,7 @@ export class Auth {
     const updateData: any = { failedLoginAttempts: attempts };
 
     if (attempts >= maxAttempts) {
-      updateData.lockedUntil = new Date(Date.now() + lockoutDuration);
+      updateData.lockedUntil = new Date(Date.now() + lockoutDuration).toISOString();
     }
 
     await this.db.update(users).set(updateData).where(eq(users.id, userId));
@@ -449,7 +366,7 @@ export class Auth {
     });
   }
 
-  async loginWithPassword(identifier: string, password: string) {
+  async loginWithPassword(identifier: string, password: string, totpCode?: string) {
     if (!this.isMethodEnabled("password"))
       throw new Error("Password authentication is not enabled");
 
@@ -471,7 +388,14 @@ export class Auth {
       await this.handleFailedLogin(user.id);
       throw new Error("Invalid credentials");
     }
+    if (user.totpEnabled) {
+      if (!totpCode) {
+        throw new Error("TOTP_REQUIRED");
+      }
 
+      const isValid = this.verifyTotpCode(user.totpSecret, totpCode);
+      if (!isValid) throw new Error("Invalid 2FA Code");
+    }
     await this.db
       .update(users)
       .set({
@@ -481,8 +405,6 @@ export class Auth {
       })
       .where(eq(users.id, user.id));
 
-    const sessionToken = await this.createSession(user.id);
-
     await this.logAuthEvent({
       userId: user.id,
       event: "login",
@@ -490,15 +412,7 @@ export class Auth {
     });
 
     this.user = user;
-    return {
-      sessionToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        displayName: user.displayName,
-      },
-    };
+    return { user };
   }
 
   async loginWithPin(identifier: string, pin: string) {
@@ -532,8 +446,6 @@ export class Auth {
       })
       .where(eq(users.id, user.id));
 
-    const sessionToken = await this.createSession(user.id);
-
     await this.logAuthEvent({
       userId: user.id,
       event: "login",
@@ -541,15 +453,7 @@ export class Auth {
     });
 
     this.user = user;
-    return {
-      sessionToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        displayName: user.displayName,
-      },
-    };
+    return { user };
   }
 
   async loginWithTotp(identifier: string, totpCode: string) {
@@ -566,8 +470,7 @@ export class Auth {
     if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
       throw new Error("Account is temporarily locked");
     }
-
-    const isValid = await verifyTotpCode(user.totpSecret, totpCode);
+    const isValid = this.verifyTotpCode(user.totpSecret, totpCode);
 
     if (!isValid) {
       await this.handleFailedLogin(user.id);
@@ -583,8 +486,6 @@ export class Auth {
       })
       .where(eq(users.id, user.id));
 
-    const sessionToken = await this.createSession(user.id);
-
     await this.logAuthEvent({
       userId: user.id,
       event: "login",
@@ -592,15 +493,7 @@ export class Auth {
     });
 
     this.user = user;
-    return {
-      sessionToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        displayName: user.displayName,
-      },
-    };
+    return { user };
   }
 
   // ==========================================
@@ -771,63 +664,54 @@ export class Auth {
   // ==========================================
 
   async setupTotp() {
-    if (!this.user) throw new Error("Not authenticated");
-    if (!this.isMethodEnabled("totp")) throw new Error("TOTP is not enabled");
+    if (!this.user) throw new Error("Unauthorized");
+    if (!this.isMethodEnabled("totp")) throw new Error("TOTP is disabled");
 
-    const user = await this.db.select().from(users).where(eq(users.id, this.user.id)).get();
-    if (!user) throw new Error("User not found");
+    const secretObj = new OTPAuth.Secret({ size: 20 });
+    const secret = secretObj.base32;
 
-    const secret = generateTotpSecret();
-    const issuer = this.authConfig.totp?.issuer || "MyApp";
-    const accountName = user.username || user.email || user.id;
+    const totp = this.getTotpObject(secret, this.user.email || "User");
+    const otpauthUrl = totp.toString();
 
-    return {
-      secret,
-      otpauthUrl: `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(accountName)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`,
-    };
+    return { secret, otpauthUrl };
   }
 
   async verifyAndEnableTotp(secret: string, code: string) {
-    if (!this.user) throw new Error("Not authenticated");
-    if (!this.isMethodEnabled("totp")) throw new Error("TOTP is not enabled");
+    if (!this.user) throw new Error("Unauthorized");
 
-    const isValid = await verifyTotpCode(secret, code);
+    // 1. Validate using our shared helper
+    const isValid = this.verifyTotpCode(secret, code);
     if (!isValid) throw new Error("Invalid TOTP code");
 
-    await this.db.update(users).set({ totpSecret: secret }).where(eq(users.id, this.user.id));
+    // 2. Save to DB (Enable it)
+    await this.db
+      .update(users)
+      .set({
+        totpSecret: secret,
+        totpEnabled: true, // Explicitly set enabled flag
+      })
+      .where(eq(users.id, this.user.id))
+      .run();
 
     await this.logAuthEvent({
       userId: this.user.id,
       event: "totp_enabled",
-      method: "totp",
-    });
-
-    return true;
-  }
-
-  async verifyTotp(code: string) {
-    if (!this.user) throw new Error("Not authenticated");
-    if (!this.isMethodEnabled("totp")) throw new Error("TOTP is not enabled");
-
-    const user = await this.db.select().from(users).where(eq(users.id, this.user.id)).get();
-    if (!user || !user.totpSecret) throw new Error("TOTP not set up for this user");
-
-    const isValid = await verifyTotpCode(user.totpSecret, code);
-    if (!isValid) throw new Error("Invalid TOTP code");
-
-    await this.logAuthEvent({
-      userId: this.user.id,
-      event: "totp_verified",
-      method: "totp",
     });
 
     return true;
   }
 
   async disableTotp() {
-    if (!this.user) throw new Error("Not authenticated");
+    if (!this.user) throw new Error("Unauthorized");
 
-    await this.db.update(users).set({ totpSecret: null }).where(eq(users.id, this.user.id));
+    await this.db
+      .update(users)
+      .set({
+        totpSecret: null,
+        totpEnabled: false,
+      })
+      .where(eq(users.id, this.user.id))
+      .run();
 
     await this.logAuthEvent({
       userId: this.user.id,
@@ -846,7 +730,8 @@ export class Auth {
     this.validateRegistrationEligibility(email);
 
     const existingUser = await this.db.select().from(users).where(eq(users.email, email)).get();
-    if (existingUser) throw new Error("An account with this email already exists.");
+
+    if (existingUser) throw new Error("Email already registered");
 
     const tempUserId = crypto.randomUUID();
     const options = await generateRegistrationOptions({
@@ -868,10 +753,29 @@ export class Auth {
 
   async verifyPasskeyRegistration(
     email: string,
+    role: string | undefined,
     response: RegistrationResponseJSON,
     challengeId: string
   ) {
     this.validateRegistrationEligibility(email);
+
+    let roleToAssign = this.authConfig.roles.default;
+
+    if (role) {
+      // Validation: Is this a known role?
+      if (!this.authConfig.roles.available.includes(role)) {
+        throw new Error("Invalid role requested.");
+      }
+
+      // Security: Is this a restricted role? (e.g., prevent self-registering as 'admin')
+      const restricted = this.authConfig.roles.restricted || [];
+      if (restricted.includes(role)) {
+        console.warn(`Blocked attempt to self-register restricted role: ${role}`);
+        throw new Error("You are not authorized to register with this role.");
+      }
+
+      roleToAssign = role;
+    }
 
     const expectedChallenge = await this.getChallenge(challengeId);
     if (!expectedChallenge) throw new Error("Registration session expired. Please try again.");
@@ -894,18 +798,44 @@ export class Auth {
     }
 
     const { credential } = verification.registrationInfo;
-    let userId = "";
+
     const existingUser = await this.db.select().from(users).where(eq(users.email, email)).get();
 
-    if (!existingUser) {
-      userId = crypto.randomUUID();
-      await this.db.insert(users).values({ id: userId, email });
-    } else {
-      userId = existingUser.id;
-    }
+    if (existingUser) throw new Error("Email already registered");
+
+    const userData: InsertUser = {
+      id: crypto.randomUUID(),
+      email: email,
+    };
+    const [newUser] = await this.db.insert(users).values(userData).returning();
+
+    await this.roleService.assignRole(newUser.id, roleToAssign, undefined, undefined);
+
+    const roles = await this.roleService.getUserRoles(newUser.id);
+    const permissions = await this.roleService.getUserPermissions(newUser.id);
+
+    const safeUser: SafeUser = {
+      id: newUser.id,
+      username: newUser.username,
+      email: newUser.email,
+      displayName: newUser.displayName,
+      totpEnabled: newUser.totpEnabled,
+      isActive: newUser.isActive,
+      emailVerified: newUser.emailVerified,
+      phoneNumber: newUser.phoneNumber,
+      phoneVerified: newUser.phoneVerified,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLoginAt: null,
+      createdAt: newUser.createdAt,
+      updatedAt: newUser.updatedAt,
+
+      roles: roles,
+      permissions: Array.from(permissions),
+    };
 
     await this.db.insert(credentials).values({
-      userId: userId,
+      userId: newUser.id,
       credentialId: credential.id,
       publicKey: isoBase64URL.fromBuffer(credential.publicKey),
       counter: credential.counter,
@@ -913,17 +843,26 @@ export class Auth {
       deviceName: "Passkey Authenticator",
     });
 
-    const sessionToken = await this.createSession(userId);
+    const sessionToken = await this.createSession(newUser.id);
 
     // Logging with specific metadata for passkeys
     await this.logAuthEvent({
-      userId,
+      userId: newUser.id,
       event: "registration",
       method: "passkey",
-      metadata: JSON.stringify({ credentialId: credential.id }),
+      metadata: JSON.stringify({ credentialId: credential.id, assignedRole: roleToAssign }),
     });
+    if (this.authConfig.security.requireEmailVerification && email) {
+      // TODO: Implement sendVerificationCode
+    }
+    this.user = safeUser;
 
-    return { verified: true, sessionToken };
+    return {
+      user: safeUser,
+      requiresVerification: this.authConfig.security.requireEmailVerification,
+      verified: true,
+      sessionToken,
+    };
   }
 
   // ==========================================
@@ -1007,8 +946,6 @@ export class Auth {
       })
       .where(eq(credentials.id, pass.id));
 
-    const sessionToken = await this.createSession(user.id);
-
     await this.logAuthEvent({
       userId: user.id,
       event: "login",
@@ -1016,7 +953,8 @@ export class Auth {
       metadata: JSON.stringify({ credentialId: pass.credentialId }),
     });
 
-    return { verified: true, sessionToken };
+    this.user = user;
+    return { user };
   }
 
   // ==========================================
